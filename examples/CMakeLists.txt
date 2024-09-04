@@ -1,7 +1,9 @@
 project(examples)
 
 if (NOT EMSCRIPTEN)
-    add_subdirectory(vendor/glfw)
+    if (NOT TARGET glfw)
+        add_subdirectory(vendor/glfw)
+    endif()
 else()
     add_library(glfw INTERFACE)
     target_compile_options(glfw INTERFACE -sUSE_GLFW=3)

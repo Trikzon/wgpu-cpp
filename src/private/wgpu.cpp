@@ -46,7 +46,11 @@ namespace wgpu
     {
         if (m_handle != nullptr)
         {
+#ifdef WEBGPU_BACKEND_WGPU
             wgpuAdapterReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+            wgpuAdapterAddRef(m_handle);
+#endif
         }
     }
 
@@ -67,7 +71,11 @@ namespace wgpu
             m_handle = other.m_handle;
             if (m_handle != nullptr)
             {
-                wgpuAdapterReference(m_handle);
+#ifdef WEBGPU_BACKEND_WGPU
+            wgpuAdapterReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+            wgpuAdapterAddRef(m_handle);
+#endif
             }
         }
         return *this;
@@ -114,7 +122,11 @@ namespace wgpu
     {
         if (m_handle != nullptr)
         {
+#ifdef WEBGPU_BACKEND_WGPU
             wgpuInstanceReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+            wgpuInstanceAddRef(m_handle);
+#endif
         }
     }
 
@@ -135,7 +147,11 @@ namespace wgpu
             m_handle = other.m_handle;
             if (m_handle != nullptr)
             {
-                wgpuInstanceReference(m_handle);
+#ifdef WEBGPU_BACKEND_WGPU
+            wgpuInstanceReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+            wgpuInstanceAddRef(m_handle);
+#endif
             }
         }
         return *this;
@@ -218,7 +234,11 @@ namespace wgpu
     {
         if (m_handle != nullptr)
         {
+#ifdef WEBGPU_BACKEND_WGPU
             wgpuSurfaceReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+            wgpuSurfaceAddRef(m_handle);
+#endif
         }
     }
 
@@ -239,7 +259,11 @@ namespace wgpu
             m_handle = other.m_handle;
             if (m_handle != nullptr)
             {
-                wgpuSurfaceReference(m_handle);
+#ifdef WEBGPU_BACKEND_WGPU
+            wgpuSurfaceReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+            wgpuSurfaceAddRef(m_handle);
+#endif
             }
         }
         return *this;
