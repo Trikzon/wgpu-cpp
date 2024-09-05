@@ -17,22 +17,24 @@ int main()
     constexpr wgpu::InstanceDescriptor instance_descriptor{};
     const wgpu::Instance instance = create_instance(instance_descriptor);
 
-    const wgpu::Surface surface{glfwGetWGPUSurface(instance.get(), window)};
+    const wgpu::Surface surface{glfwGetWGPUSurface(instance.c_ptr(), window)};
 
     // surface.configure({
     //     .next_in_chain = nullptr,
     //     .device = nullptr,
     //     .format = wgpu::TextureFormat::Undefined,
     //     .usage = wgpu::TextureUsageFlags::RenderAttachment,
-    //     .view_format_count = 0,
-    //     .view_formats = nullptr,
+    //     .view_formats = {},
     //     .alpha_mode = wgpu::CompositeAlphaMode::Auto,
     //     .width = 600,
     //     .height = 400,
     //     .present_mode = wgpu::PresentMode::Fifo,
     // });
 
-    constexpr wgpu::RequestAdapterOptions adapter_options{};
+    const wgpu::RequestAdapterOptions adapter_options
+    {
+        .compatible_surface = &surface,
+    };
     const auto adapter = instance.request_adapter(adapter_options).value();
 
     std::cout << "Hello, world!" << std::endl;

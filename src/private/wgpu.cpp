@@ -29,6 +29,54 @@ namespace wgpu
         return static_cast<uint32_t>(lhs) == static_cast<uint32_t>(rhs);
     }
 
+
+    const WGPUChainedStruct * ChainedStruct::c_struct() const
+    {
+        return reinterpret_cast<const WGPUChainedStruct *>(this);
+    }
+
+#if WEBGPU_BACKEND_DAWN
+    const WGPUInstanceFeatures * InstanceFeatures::c_struct() const
+    {
+        return reinterpret_cast<const WGPUInstanceFeatures *>(this);
+    }
+#endif
+
+    const WGPUInstanceDescriptor * InstanceDescriptor::c_struct() const
+    {
+        return reinterpret_cast<const WGPUInstanceDescriptor *>(this);
+    }
+
+    WGPURequestAdapterOptions RequestAdapterOptions::c_struct() const
+    {
+        return {
+            .nextInChain = next_in_chain->c_struct(),
+            .compatibleSurface = compatible_surface ? compatible_surface->c_ptr() : nullptr,
+            .powerPreference = static_cast<WGPUPowerPreference>(power_preference),
+            .backendType = static_cast<WGPUBackendType>(backend_type),
+            .forceFallbackAdapter = force_fallback_adapter,
+#if WEBGPU_BACKEND_DAWN
+            .compatibilityMode = compatibility_mode,
+#endif
+        };
+    }
+
+    WGPUSurfaceConfiguration SurfaceConfiguration::c_struct() const
+    {
+        return {
+            .nextInChain = next_in_chain->c_struct(),
+            .device = device,
+            .format = static_cast<WGPUTextureFormat>(format),
+            .usage = static_cast<WGPUTextureUsageFlags>(usage),
+            .viewFormatCount = view_formats.size(),
+            .viewFormats = reinterpret_cast<const WGPUTextureFormat *>(view_formats.data()),
+            .alphaMode = static_cast<WGPUCompositeAlphaMode>(alpha_mode),
+            .width = width,
+            .height = height,
+            .presentMode = static_cast<WGPUPresentMode>(present_mode),
+        };
+    }
+
     Adapter::Adapter(const WGPUAdapter& handle) : m_handle(handle)
     {
 
@@ -100,7 +148,7 @@ namespace wgpu
         return features;
     }
 
-    WGPUAdapter Adapter::get() const
+    WGPUAdapter Adapter::c_ptr() const
     {
         return m_handle;
     }
@@ -171,19 +219,20 @@ namespace wgpu
         wgpuInstanceProcessEvents(m_handle);
     }
 
-    std::unique_ptr<RequestAdapterCallback> Instance::request_adapter(RequestAdapterOptions options,
+    std::unique_ptr<RequestAdapterCallback> Instance::request_adapter(const RequestAdapterOptions &options,
         RequestAdapterCallback&& callback) const
     {
         auto handle = std::make_unique<RequestAdapterCallback>(callback);
-        static auto on_request_ended = [](WGPURequestAdapterStatus status, WGPUAdapter adapter, const char *message,
-            void *user_data) -> void
+        static auto on_request_ended = [](WGPURequestAdapterStatus status, WGPUAdapter adapter,
+            const char *message, void *user_data) -> void
         {
             const RequestAdapterCallback& callback = *static_cast<RequestAdapterCallback*>(user_data);
             callback(static_cast<RequestAdapterStatus>(status), Adapter{adapter}, message);
         };
 
-        wgpuInstanceRequestAdapter(m_handle, reinterpret_cast<WGPURequestAdapterOptions *>(&options),
-            on_request_ended, handle.get());
+        const auto wgpu_options = options.c_struct();
+
+        wgpuInstanceRequestAdapter(m_handle, &wgpu_options, on_request_ended, handle.get());
         return handle;
     }
 
@@ -192,7 +241,8 @@ namespace wgpu
         std::expected<Adapter, const char *> result = std::unexpected("Request did not end.");
         bool request_ended = false;
 
-        auto on_adapter_request_ended = [&result, &request_ended](RequestAdapterStatus status, const Adapter& adapter, const char *message)
+        auto on_adapter_request_ended = [&result, &request_ended](const RequestAdapterStatus status,
+            const Adapter& adapter, const char *message)
         {
             if (status == RequestAdapterStatus::Success)
             {
@@ -212,7 +262,7 @@ namespace wgpu
         return result;
     }
 
-    WGPUInstance Instance::get() const
+    WGPUInstance Instance::c_ptr() const
     {
         return m_handle;
     }
@@ -278,18 +328,19 @@ namespace wgpu
         return *this;
     }
 
-    void Surface::configure(SurfaceConfiguration configuration) const
+    void Surface::configure(const SurfaceConfiguration &configuration) const
     {
-        wgpuSurfaceConfigure(m_handle, reinterpret_cast<WGPUSurfaceConfiguration *>(&configuration));
+        const auto wgpu_configuration = configuration.c_struct();
+        wgpuSurfaceConfigure(m_handle, &wgpu_configuration);
     }
 
-    WGPUSurface Surface::get() const
+    WGPUSurface Surface::c_ptr() const
     {
         return m_handle;
     }
 
-    Instance create_instance(InstanceDescriptor descriptor)
+    Instance create_instance(const InstanceDescriptor &descriptor)
     {
-        return Instance{wgpuCreateInstance(reinterpret_cast<WGPUInstanceDescriptor *>(&descriptor))};
+        return Instance{wgpuCreateInstance(descriptor.c_struct())};
     }
 }

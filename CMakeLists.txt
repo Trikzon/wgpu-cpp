@@ -12,13 +12,16 @@ set(SOURCES
 add_library(wgpu_cpp STATIC ${SOURCES})
 target_include_directories(wgpu_cpp PUBLIC src/public)
 
-set(WEBGPU_BACKEND DAWN)
+# WGPU fails to compile on Mac and Dawn fails to compile on Windows currently.
+# This should be fixed in a Dawn update.
+if (WIN32)
+    set(WEBGPU_BACKEND WGPU)
+elseif (APPLE)
+    set(WEBGPU_BACKEND DAWN)
+endif()
+
 add_subdirectory(vendor/WebGPU-distribution)
 target_link_libraries(wgpu_cpp PUBLIC webgpu)
-
-#target_link_libraries(wgpu_cpp PUBLIC
-#        -static-libgcc -static-libstdc++
-#        webgpu)
 
 add_subdirectory(examples)
 
