@@ -35,7 +35,11 @@ int main()
     {
         .compatible_surface = &surface,
     };
-    const auto adapter = instance.request_adapter(adapter_options).value();
+    const auto adapter = instance.create_adapter(adapter_options).value();
+
+    const auto features = adapter.enumerate_features();
+    const auto limits = adapter.get_limits();
+    const auto properties = adapter.get_properties();
 
     std::cout << "Hello, world!" << std::endl;
 

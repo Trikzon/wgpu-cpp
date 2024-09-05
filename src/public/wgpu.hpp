@@ -15,6 +15,15 @@ namespace wgpu
     class Surface;
 
     // Enums
+    enum class AdapterType : uint32_t
+    {
+        DiscreteGPU   = WGPUAdapterType_DiscreteGPU,
+        IntegratedGPU = WGPUAdapterType_IntegratedGPU,
+        CPU           = WGPUAdapterType_CPU,
+        Unknown       = WGPUAdapterType_Unknown,
+        Force32       = WGPUAdapterType_Force32,
+    };
+
     enum class BackendType : uint32_t
     {
         Undefined = WGPUBackendType_Undefined,
@@ -37,6 +46,79 @@ namespace wgpu
         Unpremultiplied = WGPUCompositeAlphaMode_Unpremultiplied,
         Inherit         = WGPUCompositeAlphaMode_Inherit,
         Force32         = WGPUCompositeAlphaMode_Force32,
+    };
+
+    enum class FeatureName : uint32_t
+    {
+        Undefined                                      = WGPUFeatureName_Undefined,
+        DepthClipControl                               = WGPUFeatureName_DepthClipControl,
+        Depth32FloatStencil8                           = WGPUFeatureName_Depth32FloatStencil8,
+        TimestampQuery                                 = WGPUFeatureName_TimestampQuery,
+        TextureCompressionBC                           = WGPUFeatureName_TextureCompressionBC,
+        TextureCompressionETC2                         = WGPUFeatureName_TextureCompressionETC2,
+        TextureCompressionASTC                         = WGPUFeatureName_TextureCompressionASTC,
+        IndirectFirstInstance                          = WGPUFeatureName_IndirectFirstInstance,
+        ShaderF16                                      = WGPUFeatureName_ShaderF16,
+        RG11B10UfloatRenderable                        = WGPUFeatureName_RG11B10UfloatRenderable,
+        BGRA8UnormStorage                              = WGPUFeatureName_BGRA8UnormStorage,
+        Float32Filterable                              = WGPUFeatureName_Float32Filterable,
+#if WEBGPU_BACKEND_DAWN
+        DawnInternalUsages                             = WGPUFeatureName_DawnInternalUsages,
+        DawnMultiPlanarFormats                         = WGPUFeatureName_DawnMultiPlanarFormats,
+        DawnNative                                     = WGPUFeatureName_DawnNative,
+        ChromiumExperimentalTimestampQueryInsidePasses = WGPUFeatureName_ChromiumExperimentalTimestampQueryInsidePasses,
+        ImplicitDeviceSynchronization                  = WGPUFeatureName_ImplicitDeviceSynchronization,
+        SurfaceCapabilities                            = WGPUFeatureName_SurfaceCapabilities,
+        TransientAttachments                           = WGPUFeatureName_TransientAttachments,
+        MSAARenderToSingleSampled                      = WGPUFeatureName_MSAARenderToSingleSampled,
+        DualSourceBlending                             = WGPUFeatureName_DualSourceBlending,
+        D3D11MultithreadProtected                      = WGPUFeatureName_D3D11MultithreadProtected,
+        ANGLETextureSharing                            = WGPUFeatureName_ANGLETextureSharing,
+        ChromiumExperimentalSubgroups                  = WGPUFeatureName_ChromiumExperimentalSubgroups,
+        ChromiumExperimentalSubgroupUniformControlFlow = WGPUFeatureName_ChromiumExperimentalSubgroupUniformControlFlow,
+        PixelLocalStorageCoherent                      = WGPUFeatureName_PixelLocalStorageCoherent,
+        PixelLocalStorageNonCoherent                   = WGPUFeatureName_PixelLocalStorageNonCoherent,
+        Unorm16TextureFormats                          = WGPUFeatureName_Unorm16TextureFormats,
+        Snorm16TextureFormats                          = WGPUFeatureName_Snorm16TextureFormats,
+        MultiPlanarFormatExtendedUsages                = WGPUFeatureName_MultiPlanarFormatExtendedUsages,
+        MultiPlanarFormatP010                          = WGPUFeatureName_MultiPlanarFormatP010,
+        HostMappedPointer                              = WGPUFeatureName_HostMappedPointer,
+        MultiPlanarRenderTargets                       = WGPUFeatureName_MultiPlanarRenderTargets,
+        MultiPlanarFormatNv12a                         = WGPUFeatureName_MultiPlanarFormatNv12a,
+        FramebufferFetch                               = WGPUFeatureName_FramebufferFetch,
+        BufferMapExtendedUsages                        = WGPUFeatureName_BufferMapExtendedUsages,
+        AdapterPropertiesMemoryHeaps                   = WGPUFeatureName_AdapterPropertiesMemoryHeaps,
+        AdapterPropertiesD3D                           = WGPUFeatureName_AdapterPropertiesD3D,
+        AdapterPropertiesVk                            = WGPUFeatureName_AdapterPropertiesVk,
+        R8UnormStorage                                 = WGPUFeatureName_R8UnormStorage,
+        FormatCapabilities                             = WGPUFeatureName_FormatCapabilities,
+        DrmFormatCapabilities                          = WGPUFeatureName_DrmFormatCapabilities,
+        Norm16TextureFormats                           = WGPUFeatureName_Norm16TextureFormats,
+        MultiPlanarFormatNv16                          = WGPUFeatureName_MultiPlanarFormatNv16,
+        MultiPlanarFormatNv24                          = WGPUFeatureName_MultiPlanarFormatNv24,
+        MultiPlanarFormatP210                          = WGPUFeatureName_MultiPlanarFormatP210,
+        MultiPlanarFormatP410                          = WGPUFeatureName_MultiPlanarFormatP410,
+        SharedTextureMemoryVkDedicatedAllocation       = WGPUFeatureName_SharedTextureMemoryVkDedicatedAllocation,
+        SharedTextureMemoryAHardwareBuffer             = WGPUFeatureName_SharedTextureMemoryAHardwareBuffer,
+        SharedTextureMemoryDmaBuf                      = WGPUFeatureName_SharedTextureMemoryDmaBuf,
+        SharedTextureMemoryOpaqueFD                    = WGPUFeatureName_SharedTextureMemoryOpaqueFD,
+        SharedTextureMemoryZirconHandle                = WGPUFeatureName_SharedTextureMemoryZirconHandle,
+        SharedTextureMemoryDXGISharedHandle            = WGPUFeatureName_SharedTextureMemoryDXGISharedHandle,
+        SharedTextureMemoryD3D11Texture2D              = WGPUFeatureName_SharedTextureMemoryD3D11Texture2D,
+        SharedTextureMemoryIOSurface                   = WGPUFeatureName_SharedTextureMemoryIOSurface,
+        SharedTextureMemoryEGLImage                    = WGPUFeatureName_SharedTextureMemoryEGLImage,
+        SharedFenceVkSemaphoreOpaqueFD                 = WGPUFeatureName_SharedFenceVkSemaphoreOpaqueFD,
+        SharedFenceVkSemaphoreSyncFD                   = WGPUFeatureName_SharedFenceVkSemaphoreSyncFD,
+        SharedFenceVkSemaphoreZirconHandle             = WGPUFeatureName_SharedFenceVkSemaphoreZirconHandle,
+        SharedFenceDXGISharedHandle                    = WGPUFeatureName_SharedFenceDXGISharedHandle,
+        SharedFenceMTLSharedEvent                      = WGPUFeatureName_SharedFenceMTLSharedEvent,
+        SharedBufferMemoryD3D12Resource                = WGPUFeatureName_SharedBufferMemoryD3D12Resource,
+        StaticSamplers                                 = WGPUFeatureName_StaticSamplers,
+        YCbCrVulkanSamplers                            = WGPUFeatureName_YCbCrVulkanSamplers,
+        ShaderModuleCompilationOptions                 = WGPUFeatureName_ShaderModuleCompilationOptions,
+        DawnLoadResolveTexture                         = WGPUFeatureName_DawnLoadResolveTexture,
+#endif
+        Force32 = WGPUFeatureName_Force32,
     };
 
     enum class PowerPreference : uint32_t
@@ -83,7 +165,7 @@ namespace wgpu
         SurfaceDescriptorFromWaylandSurface                = WGPUSType_SurfaceDescriptorFromWaylandSurface,
         SurfaceDescriptorFromAndroidNativeWindow           = WGPUSType_SurfaceDescriptorFromAndroidNativeWindow,
 #ifdef WEBGPU_BACKEND_WGPU
-        SurfaceDescriptorFromXcbWindow                    = WGPUSType_SurfaceDescriptorFromXcbWindow,
+        SurfaceDescriptorFromXcbWindow                     = WGPUSType_SurfaceDescriptorFromXcbWindow,
 #endif
 #ifdef WEBGPU_BACKEND_DAWN
         SurfaceDescriptorFromWindowsCoreWindow             = WGPUSType_SurfaceDescriptorFromWindowsCoreWindow,
@@ -272,17 +354,17 @@ namespace wgpu
 
     enum class TextureUsageFlags : uint32_t
     {
-        None             = WGPUTextureUsage_None,
-        CopySrc          = WGPUTextureUsage_CopySrc,
-        CopyDst          = WGPUTextureUsage_CopyDst,
-        TextureBinding   = WGPUTextureUsage_TextureBinding,
-        StorageBinding   = WGPUTextureUsage_StorageBinding,
-        RenderAttachment = WGPUTextureUsage_RenderAttachment,
+        None                = WGPUTextureUsage_None,
+        CopySrc             = WGPUTextureUsage_CopySrc,
+        CopyDst             = WGPUTextureUsage_CopyDst,
+        TextureBinding      = WGPUTextureUsage_TextureBinding,
+        StorageBinding      = WGPUTextureUsage_StorageBinding,
+        RenderAttachment    = WGPUTextureUsage_RenderAttachment,
 #if WEBGPU_BACKEND_DAWN
         TransientAttachment = WGPUTextureUsage_TransientAttachment,
-        StorageAttachment = WGPUTextureUsage_StorageAttachment,
+        StorageAttachment   = WGPUTextureUsage_StorageAttachment,
 #endif
-        Force32          = WGPUTextureUsage_Force32,
+        Force32             = WGPUTextureUsage_Force32,
     };
 
     TextureUsageFlags operator|(TextureUsageFlags lhs, TextureUsageFlags rhs);
@@ -296,8 +378,25 @@ namespace wgpu
     {
         const ChainedStruct *next_in_chain;
         SType s_type;
+    };
 
-        [[nodiscard]] const WGPUChainedStruct * c_struct() const;
+    struct ChainedStructOut
+    {
+        ChainedStructOut *next_in_chain;
+        SType s_type;
+    };
+
+    struct AdapterProperties
+    {
+        ChainedStructOut *next_in_chain;
+        uint32_t vendor_id;
+        std::string vendor_name;
+        std::string architecture;
+        uint32_t device_id;
+        std::string name;
+        std::string driver_description;
+        AdapterType adapter_type;
+        BackendType backend_type;
     };
 
 #ifdef WEBGPU_BACKEND_DAWN
@@ -306,8 +405,6 @@ namespace wgpu
         const ChainedStruct *next_in_chain;
         bool timed_wait_any_enable;
         size_t timed_wait_any_max_count;
-
-        [[nodiscard]] const WGPUInstanceFeatures * c_struct() const;
     };
 #endif
 
@@ -317,8 +414,42 @@ namespace wgpu
 #ifdef WEBGPU_BACKEND_DAWN
         InstanceFeatures features;
 #endif
+    };
 
-        [[nodiscard]] const WGPUInstanceDescriptor * c_struct() const;
+    struct Limits
+    {
+        uint32_t max_texture_dimension_1d;
+        uint32_t max_texture_dimension_2d;
+        uint32_t max_texture_dimension_3d;
+        uint32_t max_texture_array_layers;
+        uint32_t max_bind_groups;
+        uint32_t max_bind_groups_plus_vertex_buffers;
+        uint32_t max_bindings_per_bind_group;
+        uint32_t max_dynamic_uniform_buffers_per_pipeline_layout;
+        uint32_t max_dynamic_storage_buffers_per_pipeline_layout;
+        uint32_t max_sampled_textures_per_shader_stage;
+        uint32_t max_samplers_per_shader_stage;
+        uint32_t max_storage_buffers_per_shader_stage;
+        uint32_t max_storage_textures_per_shader_stage;
+        uint32_t max_uniform_buffers_per_shader_stage;
+        uint64_t max_uniform_buffer_binding_size;
+        uint64_t max_storage_buffer_binding_size;
+        uint32_t min_uniform_buffer_offset_alignment;
+        uint32_t min_storage_buffer_offset_alignment;
+        uint32_t max_vertex_buffers;
+        uint64_t max_buffer_size;
+        uint32_t max_vertex_attributes;
+        uint32_t max_vertex_buffer_array_stride;
+        uint32_t max_inter_stage_shader_components;
+        uint32_t max_inter_stage_shader_variables;
+        uint32_t max_color_attachments;
+        uint32_t max_color_attachment_bytes_per_sample;
+        uint32_t max_compute_workgroup_storage_size;
+        uint32_t max_compute_invocations_per_workgroup;
+        uint32_t max_compute_workgroup_size_x;
+        uint32_t max_compute_workgroup_size_y;
+        uint32_t max_compute_workgroup_size_z;
+        uint32_t max_compute_workgroups_per_dimension;
     };
 
     struct RequestAdapterOptions
@@ -331,8 +462,12 @@ namespace wgpu
 #ifdef WEBGPU_BACKEND_DAWN
         bool compatibility_mode;
 #endif
+    };
 
-        [[nodiscard]] WGPURequestAdapterOptions c_struct() const;
+    struct SupportedLimits
+    {
+        ChainedStructOut * next_in_chain;
+        Limits limits;
     };
 
     struct SurfaceConfiguration
@@ -347,8 +482,6 @@ namespace wgpu
         uint32_t width;
         uint32_t height;
         PresentMode present_mode;
-
-        [[nodiscard]] WGPUSurfaceConfiguration c_struct() const;
     };
 
     // Callback Types
@@ -367,10 +500,10 @@ namespace wgpu
         Adapter & operator=(const Adapter &other);
         Adapter & operator=(Adapter &&other) noexcept;
 
-        [[nodiscard]] std::vector<WGPUFeatureName> enumerate_features() const;
-        // TODO: get_limits
-        // TODO: get_properties
-        // TODO: has_feature
+        [[nodiscard]] std::vector<FeatureName> enumerate_features() const;
+        [[nodiscard]] std::optional<SupportedLimits> get_limits() const;
+        [[nodiscard]] std::optional<AdapterProperties> get_properties() const;
+        [[nodiscard]] bool has_feature(FeatureName feature) const;
         // TODO: request_device
 
         [[nodiscard]] WGPUAdapter c_ptr() const;
@@ -392,9 +525,9 @@ namespace wgpu
 
         void process_events() const;
 
+        [[nodiscard]] std::expected<Adapter, const char *> create_adapter(const RequestAdapterOptions &options) const;
         std::unique_ptr<RequestAdapterCallback> request_adapter(const RequestAdapterOptions &options,
             RequestAdapterCallback &&callback) const;
-        [[nodiscard]] std::expected<Adapter, const char *> request_adapter(const RequestAdapterOptions &options) const;
 
         [[nodiscard]] WGPUInstance c_ptr() const;
 
