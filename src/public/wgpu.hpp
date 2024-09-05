@@ -11,6 +11,7 @@ namespace wgpu
 {
     // RAII Handle Forward Declarations
     class Adapter;
+    class Device;
     class Instance;
     class Surface;
 
@@ -118,7 +119,7 @@ namespace wgpu
         ShaderModuleCompilationOptions                 = WGPUFeatureName_ShaderModuleCompilationOptions,
         DawnLoadResolveTexture                         = WGPUFeatureName_DawnLoadResolveTexture,
 #endif
-        Force32 = WGPUFeatureName_Force32,
+        Force32                                        = WGPUFeatureName_Force32,
     };
 
     enum class PowerPreference : uint32_t
@@ -148,6 +149,17 @@ namespace wgpu
         Error           = WGPURequestAdapterStatus_Error,
         Unknown         = WGPURequestAdapterStatus_Unknown,
         Force32         = WGPURequestAdapterStatus_Force32,
+    };
+
+    enum class RequestDeviceStatus : uint32_t
+    {
+        Success         = WGPURequestDeviceStatus_Success,
+#ifdef WEBGPU_BACKEND_DAWN
+        InstanceDropped = WGPURequestDeviceStatus_InstanceDropped,
+#endif
+        Error           = WGPURequestDeviceStatus_Error,
+        Unknown         = WGPURequestDeviceStatus_Unknown,
+        Force32         = WGPURequestDeviceStatus_Force32,
     };
 
     enum class SType : uint32_t
@@ -399,21 +411,10 @@ namespace wgpu
         BackendType backend_type;
     };
 
-#ifdef WEBGPU_BACKEND_DAWN
-    struct InstanceFeatures
+    struct QueueDescriptor
     {
         const ChainedStruct *next_in_chain;
-        bool timed_wait_any_enable;
-        size_t timed_wait_any_max_count;
-    };
-#endif
-
-    struct InstanceDescriptor
-    {
-        const ChainedStruct *next_in_chain;
-#ifdef WEBGPU_BACKEND_DAWN
-        InstanceFeatures features;
-#endif
+        std::string label;
     };
 
     struct Limits
@@ -452,6 +453,38 @@ namespace wgpu
         uint32_t max_compute_workgroups_per_dimension;
     };
 
+    struct RequiredLimits
+    {
+        const ChainedStruct *next_in_chain;
+        Limits limits;
+    };
+
+    struct DeviceDescriptor
+    {
+        const ChainedStruct *next_in_chain;
+        std::string label;
+        std::vector<FeatureName> required_features;
+        WGPU_NULLABLE const RequiredLimits *required_limits;
+        QueueDescriptor default_queue;
+    };
+
+#ifdef WEBGPU_BACKEND_DAWN
+    struct InstanceFeatures
+    {
+        const ChainedStruct *next_in_chain;
+        bool timed_wait_any_enable;
+        size_t timed_wait_any_max_count;
+    };
+#endif
+
+    struct InstanceDescriptor
+    {
+        const ChainedStruct *next_in_chain;
+#ifdef WEBGPU_BACKEND_DAWN
+        InstanceFeatures features;
+#endif
+    };
+
     struct RequestAdapterOptions
     {
         const ChainedStruct *next_in_chain;
@@ -466,27 +499,15 @@ namespace wgpu
 
     struct SupportedLimits
     {
-        ChainedStructOut * next_in_chain;
+        ChainedStructOut *next_in_chain;
         Limits limits;
-    };
-
-    struct SurfaceConfiguration
-    {
-        const ChainedStruct *next_in_chain;
-        // TODO: Device device
-        WGPUDevice device;
-        TextureFormat format;
-        TextureUsageFlags usage;
-        std::vector<TextureFormat> view_formats;
-        CompositeAlphaMode alpha_mode;
-        uint32_t width;
-        uint32_t height;
-        PresentMode present_mode;
     };
 
     // Callback Types
     using RequestAdapterCallback = std::function<void(RequestAdapterStatus status, const Adapter &adapter,
-        const char *message)>;
+        const std::string &message)>;
+    using RequestDeviceCallback = std::function<void(RequestDeviceStatus status, const Device &device,
+        const std::string &message)>;
 
     // RAII Handles
     class Adapter
@@ -500,16 +521,48 @@ namespace wgpu
         Adapter & operator=(const Adapter &other);
         Adapter & operator=(Adapter &&other) noexcept;
 
+        [[nodiscard]] WGPUAdapter c_ptr() const;
+
+        [[nodiscard]] std::expected<Device, std::string> create_device(const DeviceDescriptor &descriptor) const;
         [[nodiscard]] std::vector<FeatureName> enumerate_features() const;
         [[nodiscard]] std::optional<SupportedLimits> get_limits() const;
         [[nodiscard]] std::optional<AdapterProperties> get_properties() const;
         [[nodiscard]] bool has_feature(FeatureName feature) const;
-        // TODO: request_device
-
-        [[nodiscard]] WGPUAdapter c_ptr() const;
+        std::unique_ptr<RequestDeviceCallback> request_device(const DeviceDescriptor &descriptor,
+            RequestDeviceCallback &&callback) const;
 
     private:
         WGPUAdapter m_handle{nullptr};
+    };
+
+    class Device
+    {
+    public:
+        explicit Device(const WGPUDevice &handle);
+        ~Device();
+
+        Device(const Device &other);
+        Device(Device &&other) noexcept;
+        Device & operator=(const Device &other);
+        Device & operator=(Device &&other) noexcept;
+
+        [[nodiscard]] WGPUDevice c_ptr() const;
+
+    private:
+        WGPUDevice m_handle{nullptr};
+    };
+
+    struct SurfaceConfiguration
+    {
+        const ChainedStruct *next_in_chain;
+        Device device;
+        TextureFormat format;
+        TextureUsageFlags usage;
+        std::vector<TextureFormat> view_formats;
+        CompositeAlphaMode alpha_mode;
+        uint32_t width;
+        uint32_t height;
+        PresentMode present_mode;
     };
 
     class Instance
@@ -523,13 +576,12 @@ namespace wgpu
         Instance & operator=(const Instance &other);
         Instance & operator=(Instance &&other) noexcept;
 
-        void process_events() const;
+        [[nodiscard]] WGPUInstance c_ptr() const;
 
-        [[nodiscard]] std::expected<Adapter, const char *> create_adapter(const RequestAdapterOptions &options) const;
+        [[nodiscard]] std::expected<Adapter, std::string> create_adapter(const RequestAdapterOptions &options) const;
+        void process_events() const;
         std::unique_ptr<RequestAdapterCallback> request_adapter(const RequestAdapterOptions &options,
             RequestAdapterCallback &&callback) const;
-
-        [[nodiscard]] WGPUInstance c_ptr() const;
 
     private:
         WGPUInstance m_handle{nullptr};
@@ -546,9 +598,9 @@ namespace wgpu
         Surface & operator=(const Surface &other);
         Surface & operator=(Surface &&other) noexcept;
 
-        void configure(const SurfaceConfiguration &configuration) const;
-
         [[nodiscard]] WGPUSurface c_ptr() const;
+
+        void configure(const SurfaceConfiguration &configuration) const;
 
     private:
         WGPUSurface m_handle{nullptr};

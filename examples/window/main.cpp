@@ -1,7 +1,7 @@
-#include <glfw3webgpu.h>
 #include <iostream>
 
 #include <GLFW/glfw3.h>
+#include <glfw3webgpu.h>
 #include <wgpu.hpp>
 
 int main()
@@ -19,18 +19,6 @@ int main()
 
     const wgpu::Surface surface{glfwGetWGPUSurface(instance.c_ptr(), window)};
 
-    // surface.configure({
-    //     .next_in_chain = nullptr,
-    //     .device = nullptr,
-    //     .format = wgpu::TextureFormat::Undefined,
-    //     .usage = wgpu::TextureUsageFlags::RenderAttachment,
-    //     .view_formats = {},
-    //     .alpha_mode = wgpu::CompositeAlphaMode::Auto,
-    //     .width = 600,
-    //     .height = 400,
-    //     .present_mode = wgpu::PresentMode::Fifo,
-    // });
-
     const wgpu::RequestAdapterOptions adapter_options
     {
         .compatible_surface = &surface,
@@ -40,6 +28,20 @@ int main()
     const auto features = adapter.enumerate_features();
     const auto limits = adapter.get_limits();
     const auto properties = adapter.get_properties();
+
+    const auto device = adapter.create_device({}).value();
+
+    surface.configure({
+        .next_in_chain = nullptr,
+        .device = device,
+        .format = wgpu::TextureFormat::RGBA8Unorm,
+        .usage = wgpu::TextureUsageFlags::RenderAttachment,
+        .view_formats = {},
+        .alpha_mode = wgpu::CompositeAlphaMode::Auto,
+        .width = 600,
+        .height = 400,
+        .present_mode = wgpu::PresentMode::Fifo,
+    });
 
     std::cout << "Hello, world!" << std::endl;
 
