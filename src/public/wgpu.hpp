@@ -2,7 +2,6 @@
 
 #include <expected>
 #include <functional>
-#include <memory>
 #include <optional>
 
 #include <webgpu/webgpu.h>
@@ -12,10 +11,27 @@ namespace wgpu
     // RAII Handle Forward Declarations
     class Adapter;
     class Device;
-    class Instance;
     class Surface;
     class Texture;
     class TextureView;
+
+    // Struct Forward Declarations
+    struct ChainedStruct;
+    struct ChainedStructOut;
+    struct AdapterProperties;
+    struct QueueDescriptor;
+    struct Limits;
+    struct RequiredLimits;
+    struct DeviceDescriptor;
+    struct InstanceFeatures;
+    struct InstanceDescriptor;
+    struct RequestAdapterOptions;
+    struct SupportedLimits;
+    struct SurfaceLimits;
+    struct SurfaceCapabilities;
+    struct SurfaceConfiguration;
+    struct SurfaceTexture;
+    struct TextureViewDescriptor;
 
     // Enums
     enum class AdapterType : uint32_t
@@ -440,6 +456,145 @@ namespace wgpu
     TextureUsageFlags & operator&=(TextureUsageFlags& lhs, TextureUsageFlags rhs);
     bool operator==(TextureUsageFlags lhs, TextureUsageFlags rhs);
 
+    // Callback Types
+    using RequestAdapterCallback = std::function<void(RequestAdapterStatus status, const Adapter &adapter,
+        const std::string &message)>;
+    using RequestDeviceCallback = std::function<void(RequestDeviceStatus status, const Device &device,
+        const std::string &message)>;
+
+    // RAII Handles
+    class Adapter
+    {
+    public:
+        explicit Adapter(const WGPUAdapter &handle);
+        ~Adapter();
+
+        Adapter(const Adapter &other);
+        Adapter(Adapter &&other) noexcept;
+        Adapter & operator=(const Adapter &other);
+        Adapter & operator=(Adapter &&other) noexcept;
+
+        [[nodiscard]] WGPUAdapter c_ptr() const;
+
+        [[nodiscard]] std::expected<Device, std::string> create_device(const DeviceDescriptor &descriptor) const;
+        [[nodiscard]] std::vector<FeatureName> enumerate_features() const;
+        [[nodiscard]] std::optional<SupportedLimits> get_limits() const;
+        [[nodiscard]] std::optional<AdapterProperties> get_properties() const;
+        [[nodiscard]] bool has_feature(FeatureName feature) const;
+        std::unique_ptr<RequestDeviceCallback> request_device(const DeviceDescriptor &descriptor,
+            RequestDeviceCallback &&callback) const;
+
+    private:
+        WGPUAdapter m_handle{nullptr};
+    };
+
+    class Device
+    {
+    public:
+        explicit Device(const WGPUDevice &handle);
+        ~Device();
+
+        Device(const Device &other);
+        Device(Device &&other) noexcept;
+        Device & operator=(const Device &other);
+        Device & operator=(Device &&other) noexcept;
+
+        [[nodiscard]] WGPUDevice c_ptr() const;
+
+    private:
+        WGPUDevice m_handle{nullptr};
+    };
+
+    class Instance
+    {
+    public:
+        explicit Instance(const WGPUInstance &handle);
+        ~Instance();
+
+        Instance(const Instance &other);
+        Instance(Instance &&other) noexcept;
+        Instance & operator=(const Instance &other);
+        Instance & operator=(Instance &&other) noexcept;
+
+        [[nodiscard]] WGPUInstance c_ptr() const;
+
+        [[nodiscard]] std::expected<Adapter, std::string> create_adapter(const RequestAdapterOptions &options) const;
+        void process_events() const;
+        std::unique_ptr<RequestAdapterCallback> request_adapter(const RequestAdapterOptions &options,
+            RequestAdapterCallback &&callback) const;
+
+    private:
+        WGPUInstance m_handle{nullptr};
+    };
+
+    class Surface
+    {
+    public:
+        explicit Surface(const WGPUSurface &handle);
+        ~Surface();
+
+        Surface(const Surface &other);
+        Surface(Surface &&other) noexcept;
+        Surface & operator=(const Surface &other);
+        Surface & operator=(Surface &&other) noexcept;
+
+        [[nodiscard]] WGPUSurface c_ptr() const;
+
+        void configure(const SurfaceConfiguration &configuration) const;
+        [[nodiscard]] SurfaceCapabilities get_capabilities(const Adapter &adapter) const;
+        [[nodiscard]] SurfaceTexture get_current_texture() const;
+        void present() const;
+        void unconfigure() const;
+
+    private:
+        WGPUSurface m_handle{nullptr};
+    };
+
+    class Texture
+    {
+    public:
+        explicit Texture(const WGPUTexture &handle);
+        ~Texture();
+
+        Texture(const Texture &other);
+        Texture(Texture &&other) noexcept;
+        Texture & operator=(const Texture &other);
+        Texture & operator=(Texture &&other) noexcept;
+
+        [[nodiscard]] WGPUTexture c_ptr() const;
+
+        [[nodiscard]] TextureView create_view() const;
+        [[nodiscard]] TextureView create_view(const TextureViewDescriptor &descriptor) const;
+        [[nodiscard]] uint32_t get_depth_or_array_layers() const;
+        [[nodiscard]] TextureDimension get_dimension() const;
+        [[nodiscard]] TextureFormat get_format() const;
+        [[nodiscard]] uint32_t get_height() const;
+        [[nodiscard]] uint32_t get_mip_level_count() const;
+        [[nodiscard]] uint32_t get_sample_count() const;
+        [[nodiscard]] TextureUsageFlags get_usage() const;
+        [[nodiscard]] uint32_t get_width() const;
+
+    private:
+        WGPUTexture m_handle{nullptr};
+    };
+
+    class TextureView
+    {
+    public:
+        explicit TextureView(const WGPUTextureView &handle);
+        ~TextureView();
+
+        TextureView(const TextureView &other);
+        TextureView(TextureView &&other) noexcept;
+        TextureView & operator=(const TextureView &other);
+        TextureView & operator=(TextureView &&other) noexcept;
+
+        [[nodiscard]] WGPUTextureView c_ptr() const;
+
+    private:
+        WGPUTextureView m_handle{nullptr};
+    };
+
     // Structs
     struct ChainedStruct
     {
@@ -569,68 +724,6 @@ namespace wgpu
         std::vector<CompositeAlphaMode> alpha_modes;
     };
 
-    struct TextureViewDescriptor
-    {
-        const ChainedStruct *next_in_chain;
-        std::string label;
-        TextureFormat format;
-        TextureViewDimension dimension;
-        uint32_t base_mip_level;
-        uint32_t mip_level_count;
-        uint32_t base_array_layer;
-        uint32_t array_layer_count;
-        TextureAspect aspect;
-    };
-
-    // Callback Types
-    using RequestAdapterCallback = std::function<void(RequestAdapterStatus status, const Adapter &adapter,
-        const std::string &message)>;
-    using RequestDeviceCallback = std::function<void(RequestDeviceStatus status, const Device &device,
-        const std::string &message)>;
-
-    // RAII Handles
-    class Adapter
-    {
-    public:
-        explicit Adapter(const WGPUAdapter &handle);
-        ~Adapter();
-
-        Adapter(const Adapter &other);
-        Adapter(Adapter &&other) noexcept;
-        Adapter & operator=(const Adapter &other);
-        Adapter & operator=(Adapter &&other) noexcept;
-
-        [[nodiscard]] WGPUAdapter c_ptr() const;
-
-        [[nodiscard]] std::expected<Device, std::string> create_device(const DeviceDescriptor &descriptor) const;
-        [[nodiscard]] std::vector<FeatureName> enumerate_features() const;
-        [[nodiscard]] std::optional<SupportedLimits> get_limits() const;
-        [[nodiscard]] std::optional<AdapterProperties> get_properties() const;
-        [[nodiscard]] bool has_feature(FeatureName feature) const;
-        std::unique_ptr<RequestDeviceCallback> request_device(const DeviceDescriptor &descriptor,
-            RequestDeviceCallback &&callback) const;
-
-    private:
-        WGPUAdapter m_handle{nullptr};
-    };
-
-    class Device
-    {
-    public:
-        explicit Device(const WGPUDevice &handle);
-        ~Device();
-
-        Device(const Device &other);
-        Device(Device &&other) noexcept;
-        Device & operator=(const Device &other);
-        Device & operator=(Device &&other) noexcept;
-
-        [[nodiscard]] WGPUDevice c_ptr() const;
-
-    private:
-        WGPUDevice m_handle{nullptr};
-    };
-
     struct SurfaceConfiguration
     {
         const ChainedStruct *next_in_chain;
@@ -644,56 +737,6 @@ namespace wgpu
         PresentMode present_mode;
     };
 
-    class Instance
-    {
-    public:
-        explicit Instance(const WGPUInstance &handle);
-        ~Instance();
-
-        Instance(const Instance &other);
-        Instance(Instance &&other) noexcept;
-        Instance & operator=(const Instance &other);
-        Instance & operator=(Instance &&other) noexcept;
-
-        [[nodiscard]] WGPUInstance c_ptr() const;
-
-        [[nodiscard]] std::expected<Adapter, std::string> create_adapter(const RequestAdapterOptions &options) const;
-        void process_events() const;
-        std::unique_ptr<RequestAdapterCallback> request_adapter(const RequestAdapterOptions &options,
-            RequestAdapterCallback &&callback) const;
-
-    private:
-        WGPUInstance m_handle{nullptr};
-    };
-
-    class Texture
-    {
-    public:
-        explicit Texture(const WGPUTexture &handle);
-        ~Texture();
-
-        Texture(const Texture &other);
-        Texture(Texture &&other) noexcept;
-        Texture & operator=(const Texture &other);
-        Texture & operator=(Texture &&other) noexcept;
-
-        [[nodiscard]] WGPUTexture c_ptr() const;
-
-        [[nodiscard]] TextureView create_view() const;
-        [[nodiscard]] TextureView create_view(const TextureViewDescriptor &descriptor) const;
-        [[nodiscard]] uint32_t get_depth_or_array_layers() const;
-        [[nodiscard]] TextureDimension get_dimension() const;
-        [[nodiscard]] TextureFormat get_format() const;
-        [[nodiscard]] uint32_t get_height() const;
-        [[nodiscard]] uint32_t get_mip_level_count() const;
-        [[nodiscard]] uint32_t get_sample_count() const;
-        [[nodiscard]] TextureUsageFlags get_usage() const;
-        [[nodiscard]] uint32_t get_width() const;
-
-    private:
-        WGPUTexture m_handle{nullptr};
-    };
-
     struct SurfaceTexture
     {
         Texture texture;
@@ -701,44 +744,17 @@ namespace wgpu
         SurfaceGetCurrentTextureStatus status;
     };
 
-    class Surface
+    struct TextureViewDescriptor
     {
-    public:
-        explicit Surface(const WGPUSurface &handle);
-        ~Surface();
-
-        Surface(const Surface &other);
-        Surface(Surface &&other) noexcept;
-        Surface & operator=(const Surface &other);
-        Surface & operator=(Surface &&other) noexcept;
-
-        [[nodiscard]] WGPUSurface c_ptr() const;
-
-        void configure(const SurfaceConfiguration &configuration) const;
-        [[nodiscard]] SurfaceCapabilities get_capabilities(const Adapter &adapter) const;
-        [[nodiscard]] SurfaceTexture get_current_texture() const;
-        void present() const;
-        void unconfigure() const;
-
-    private:
-        WGPUSurface m_handle{nullptr};
-    };
-
-    class TextureView
-    {
-    public:
-        explicit TextureView(const WGPUTextureView &handle);
-        ~TextureView();
-
-        TextureView(const TextureView &other);
-        TextureView(TextureView &&other) noexcept;
-        TextureView & operator=(const TextureView &other);
-        TextureView & operator=(TextureView &&other) noexcept;
-
-        [[nodiscard]] WGPUTextureView c_ptr() const;
-
-    private:
-        WGPUTextureView m_handle{nullptr};
+        const ChainedStruct *next_in_chain;
+        std::string label;
+        TextureFormat format;
+        TextureViewDimension dimension;
+        uint32_t base_mip_level;
+        uint32_t mip_level_count;
+        uint32_t base_array_layer;
+        uint32_t array_layer_count;
+        TextureAspect aspect;
     };
 
     // Non-member Functions

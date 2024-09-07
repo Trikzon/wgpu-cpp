@@ -414,134 +414,6 @@ namespace wgpu
         return handle;
     }
 
-    Texture::Texture(const WGPUTexture &handle) : m_handle(handle)
-    {
-
-    }
-
-    Texture::~Texture()
-    {
-        if (m_handle != nullptr)
-        {
-            wgpuTextureRelease(m_handle);
-        }
-    }
-
-    Texture::Texture(const Texture &other) : m_handle(other.m_handle)
-    {
-        if (m_handle != nullptr)
-        {
-#ifdef WEBGPU_BACKEND_WGPU
-            wgpuTextureReference(m_handle);
-#elif WEBGPU_BACKEND_DAWN
-            wgpuTextureAddRef(m_handle);
-#endif
-        }
-    }
-
-    Texture::Texture(Texture &&other) noexcept
-    {
-        std::swap(m_handle, other.m_handle);
-    }
-
-    Texture & Texture::operator=(const Texture &other)
-    {
-        if (this != &other)
-        {
-            if (m_handle != nullptr)
-            {
-                wgpuTextureRelease(m_handle);
-            }
-
-            m_handle = other.m_handle;
-            if (m_handle != nullptr)
-            {
-#ifdef WEBGPU_BACKEND_WGPU
-                wgpuTextureReference(m_handle);
-#elif WEBGPU_BACKEND_DAWN
-                wgpuTextureAddRef(m_handle);
-#endif
-            }
-        }
-        return *this;
-    }
-
-    Texture & Texture::operator=(Texture &&other) noexcept
-    {
-        if (this != &other)
-        {
-            std::swap(m_handle, other.m_handle);
-        }
-        return *this;
-    }
-
-    WGPUTexture Texture::c_ptr() const
-    {
-        return m_handle;
-    }
-
-    TextureView Texture::create_view() const
-    {
-        return TextureView{wgpuTextureCreateView(m_handle, nullptr)};
-    }
-
-    TextureView Texture::create_view(const TextureViewDescriptor &descriptor) const
-    {
-        const WGPUTextureViewDescriptor wgpu_descriptor = {
-            .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(descriptor.next_in_chain),
-            .label = descriptor.label.c_str(),
-            .format = static_cast<WGPUTextureFormat>(descriptor.format),
-            .dimension = static_cast<WGPUTextureViewDimension>(descriptor.dimension),
-            .baseMipLevel = descriptor.base_mip_level,
-            .mipLevelCount = descriptor.mip_level_count,
-            .baseArrayLayer = descriptor.base_array_layer,
-            .arrayLayerCount = descriptor.array_layer_count,
-            .aspect = static_cast<WGPUTextureAspect>(descriptor.aspect),
-        };
-
-        return TextureView{wgpuTextureCreateView(m_handle, &wgpu_descriptor)};
-    }
-
-    uint32_t Texture::get_depth_or_array_layers() const
-    {
-        return wgpuTextureGetDepthOrArrayLayers(m_handle);
-    }
-
-    TextureDimension Texture::get_dimension() const
-    {
-        return static_cast<TextureDimension>(wgpuTextureGetDimension(m_handle));
-    }
-
-    TextureFormat Texture::get_format() const
-    {
-        return static_cast<TextureFormat>(wgpuTextureGetFormat(m_handle));
-    }
-
-    uint32_t Texture::get_height() const
-    {
-        return wgpuTextureGetHeight(m_handle);
-    }
-
-    uint32_t Texture::get_mip_level_count() const
-    {
-        return wgpuTextureGetMipLevelCount(m_handle);
-    }
-
-    uint32_t Texture::get_sample_count() const
-    {
-        return wgpuTextureGetSampleCount(m_handle);
-    }
-
-    TextureUsageFlags Texture::get_usage() const
-    {
-        return static_cast<TextureUsageFlags>(wgpuTextureGetUsage(m_handle));
-    }
-
-    uint32_t Texture::get_width() const
-    {
-        return wgpuTextureGetWidth(m_handle);
-    }
-
     Surface::Surface(const WGPUSurface &handle) : m_handle(handle)
     {
 
@@ -672,6 +544,134 @@ namespace wgpu
     void Surface::unconfigure() const
     {
         wgpuSurfaceUnconfigure(m_handle);
+    }
+
+    Texture::Texture(const WGPUTexture &handle) : m_handle(handle)
+    {
+
+    }
+
+    Texture::~Texture()
+    {
+        if (m_handle != nullptr)
+        {
+            wgpuTextureRelease(m_handle);
+        }
+    }
+
+    Texture::Texture(const Texture &other) : m_handle(other.m_handle)
+    {
+        if (m_handle != nullptr)
+        {
+#ifdef WEBGPU_BACKEND_WGPU
+            wgpuTextureReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+            wgpuTextureAddRef(m_handle);
+#endif
+        }
+    }
+
+    Texture::Texture(Texture &&other) noexcept
+    {
+        std::swap(m_handle, other.m_handle);
+    }
+
+    Texture & Texture::operator=(const Texture &other)
+    {
+        if (this != &other)
+        {
+            if (m_handle != nullptr)
+            {
+                wgpuTextureRelease(m_handle);
+            }
+
+            m_handle = other.m_handle;
+            if (m_handle != nullptr)
+            {
+#ifdef WEBGPU_BACKEND_WGPU
+                wgpuTextureReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+                wgpuTextureAddRef(m_handle);
+#endif
+            }
+        }
+        return *this;
+    }
+
+    Texture & Texture::operator=(Texture &&other) noexcept
+    {
+        if (this != &other)
+        {
+            std::swap(m_handle, other.m_handle);
+        }
+        return *this;
+    }
+
+    WGPUTexture Texture::c_ptr() const
+    {
+        return m_handle;
+    }
+
+    TextureView Texture::create_view() const
+    {
+        return TextureView{wgpuTextureCreateView(m_handle, nullptr)};
+    }
+
+    TextureView Texture::create_view(const TextureViewDescriptor &descriptor) const
+    {
+        const WGPUTextureViewDescriptor wgpu_descriptor = {
+            .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(descriptor.next_in_chain),
+            .label = descriptor.label.c_str(),
+            .format = static_cast<WGPUTextureFormat>(descriptor.format),
+            .dimension = static_cast<WGPUTextureViewDimension>(descriptor.dimension),
+            .baseMipLevel = descriptor.base_mip_level,
+            .mipLevelCount = descriptor.mip_level_count,
+            .baseArrayLayer = descriptor.base_array_layer,
+            .arrayLayerCount = descriptor.array_layer_count,
+            .aspect = static_cast<WGPUTextureAspect>(descriptor.aspect),
+        };
+
+        return TextureView{wgpuTextureCreateView(m_handle, &wgpu_descriptor)};
+    }
+
+    uint32_t Texture::get_depth_or_array_layers() const
+    {
+        return wgpuTextureGetDepthOrArrayLayers(m_handle);
+    }
+
+    TextureDimension Texture::get_dimension() const
+    {
+        return static_cast<TextureDimension>(wgpuTextureGetDimension(m_handle));
+    }
+
+    TextureFormat Texture::get_format() const
+    {
+        return static_cast<TextureFormat>(wgpuTextureGetFormat(m_handle));
+    }
+
+    uint32_t Texture::get_height() const
+    {
+        return wgpuTextureGetHeight(m_handle);
+    }
+
+    uint32_t Texture::get_mip_level_count() const
+    {
+        return wgpuTextureGetMipLevelCount(m_handle);
+    }
+
+    uint32_t Texture::get_sample_count() const
+    {
+        return wgpuTextureGetSampleCount(m_handle);
+    }
+
+    TextureUsageFlags Texture::get_usage() const
+    {
+        return static_cast<TextureUsageFlags>(wgpuTextureGetUsage(m_handle));
+    }
+
+    uint32_t Texture::get_width() const
+    {
+        return wgpuTextureGetWidth(m_handle);
     }
 
     TextureView::TextureView(const WGPUTextureView &handle) : m_handle(handle)
