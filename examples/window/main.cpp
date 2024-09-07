@@ -19,22 +19,18 @@ int main()
 
     const wgpu::Surface surface{glfwGetWGPUSurface(instance.c_ptr(), window)};
 
-    const wgpu::RequestAdapterOptions adapter_options
-    {
+    const auto adapter = instance.create_adapter({
         .compatible_surface = &surface,
-    };
-    const auto adapter = instance.create_adapter(adapter_options).value();
-
-    const auto features = adapter.enumerate_features();
-    const auto limits = adapter.get_limits();
-    const auto properties = adapter.get_properties();
+    }).value();
 
     const auto device = adapter.create_device({}).value();
+
+    const auto surface_capabilities = surface.get_capabilities(adapter);
 
     surface.configure({
         .next_in_chain = nullptr,
         .device = device,
-        .format = wgpu::TextureFormat::RGBA8Unorm,
+        .format = surface_capabilities.formats[0],
         .usage = wgpu::TextureUsageFlags::RenderAttachment,
         .view_formats = {},
         .alpha_mode = wgpu::CompositeAlphaMode::Auto,
@@ -47,7 +43,13 @@ int main()
 
     while (!glfwWindowShouldClose(window))
     {
+        instance.process_events();
         glfwPollEvents();
+
+        const auto surface_texture = surface.get_current_texture().texture;
+        const auto surface_view = surface_texture.create_view();
+
+        surface.present();
     }
 
     glfwTerminate();

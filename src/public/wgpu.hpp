@@ -14,6 +14,8 @@ namespace wgpu
     class Device;
     class Instance;
     class Surface;
+    class Texture;
+    class TextureView;
 
     // Enums
     enum class AdapterType : uint32_t
@@ -63,7 +65,7 @@ namespace wgpu
         RG11B10UfloatRenderable                        = WGPUFeatureName_RG11B10UfloatRenderable,
         BGRA8UnormStorage                              = WGPUFeatureName_BGRA8UnormStorage,
         Float32Filterable                              = WGPUFeatureName_Float32Filterable,
-#if WEBGPU_BACKEND_DAWN
+#ifdef WEBGPU_BACKEND_DAWN
         DawnInternalUsages                             = WGPUFeatureName_DawnInternalUsages,
         DawnMultiPlanarFormats                         = WGPUFeatureName_DawnMultiPlanarFormats,
         DawnNative                                     = WGPUFeatureName_DawnNative,
@@ -142,7 +144,7 @@ namespace wgpu
     enum class RequestAdapterStatus : uint32_t
     {
         Success         = WGPURequestAdapterStatus_Success,
-#if WEBGPU_BACKEND_DAWN
+#ifdef WEBGPU_BACKEND_DAWN
         InstanceDropped = WGPURequestAdapterStatus_InstanceDropped,
 #endif
         Unavailable     = WGPURequestAdapterStatus_Unavailable,
@@ -247,6 +249,47 @@ namespace wgpu
         Force32                                            = WGPUSType_Force32,
     };
 
+    enum class SurfaceGetCurrentTextureStatus
+    {
+        Success     = WGPUSurfaceGetCurrentTextureStatus_Success,
+        Timeout     = WGPUSurfaceGetCurrentTextureStatus_Timeout,
+        Outdated    = WGPUSurfaceGetCurrentTextureStatus_Outdated,
+        Lost        = WGPUSurfaceGetCurrentTextureStatus_Lost,
+        OutOfMemory = WGPUSurfaceGetCurrentTextureStatus_OutOfMemory,
+        DeviceLost  = WGPUSurfaceGetCurrentTextureStatus_DeviceLost,
+#ifdef WEBGPU_BACKEND_DAWN
+        Error       = WGPUSurfaceGetCurrentTextureStatus_Error,
+#endif
+        Force32     = WGPUSurfaceGetCurrentTextureStatus_Force32,
+    };
+
+    enum class TextureAspect : uint32_t
+    {
+#ifdef WEBGPU_BACKEND_DAWN
+        Undefined   = WGPUTextureAspect_Undefined,
+#endif
+        All         = WGPUTextureAspect_All,
+        StencilOnly = WGPUTextureAspect_StencilOnly,
+        DepthOnly   = WGPUTextureAspect_DepthOnly,
+#ifdef WEBGPU_BACKEND_DAWN
+        Plane0Only  = WGPUTextureAspect_Plane0Only,
+        Plane1Only  = WGPUTextureAspect_Plane1Only,
+        Plane2Only  = WGPUTextureAspect_Plane2Only,
+#endif
+        Force32     = WGPUTextureAspect_Force32,
+    };
+
+    enum class TextureDimension : uint32_t
+    {
+#ifdef WEBGPU_BACKEND_DAWN
+        Undefined = WGPUTextureDimension_Undefined,
+#endif
+        _1D       = WGPUTextureDimension_1D,
+        _2D       = WGPUTextureDimension_2D,
+        _3D       = WGPUTextureDimension_3D,
+        Force32   = WGPUTextureDimension_Force32,
+    };
+
     enum class TextureFormat : uint32_t
     {
         Undefined                   = WGPUTextureFormat_Undefined,
@@ -345,7 +388,7 @@ namespace wgpu
         ASTC12x10UnormSrgb          = WGPUTextureFormat_ASTC12x10UnormSrgb,
         ASTC12x12Unorm              = WGPUTextureFormat_ASTC12x12Unorm,
         ASTC12x12UnormSrgb          = WGPUTextureFormat_ASTC12x12UnormSrgb,
-#if WEBGPU_BACKEND_DAWN
+#ifdef WEBGPU_BACKEND_DAWN
         R16Unorm                    = WGPUTextureFormat_R16Unorm,
         RG16Unorm                   = WGPUTextureFormat_RG16Unorm,
         RGBA16Unorm                 = WGPUTextureFormat_RGBA16Unorm,
@@ -372,11 +415,23 @@ namespace wgpu
         TextureBinding      = WGPUTextureUsage_TextureBinding,
         StorageBinding      = WGPUTextureUsage_StorageBinding,
         RenderAttachment    = WGPUTextureUsage_RenderAttachment,
-#if WEBGPU_BACKEND_DAWN
+#ifdef WEBGPU_BACKEND_DAWN
         TransientAttachment = WGPUTextureUsage_TransientAttachment,
         StorageAttachment   = WGPUTextureUsage_StorageAttachment,
 #endif
         Force32             = WGPUTextureUsage_Force32,
+    };
+
+    enum class TextureViewDimension : uint32_t
+    {
+        Undefined = WGPUTextureViewDimension_Undefined,
+        _1D       = WGPUTextureViewDimension_1D,
+        _2D       = WGPUTextureViewDimension_2D,
+        _2DArray  = WGPUTextureViewDimension_2DArray,
+        Cube      = WGPUTextureViewDimension_Cube,
+        CubeArray = WGPUTextureViewDimension_CubeArray,
+        _3D       = WGPUTextureViewDimension_3D,
+        Force32   = WGPUTextureViewDimension_Force32,
     };
 
     TextureUsageFlags operator|(TextureUsageFlags lhs, TextureUsageFlags rhs);
@@ -503,6 +558,30 @@ namespace wgpu
         Limits limits;
     };
 
+    struct SurfaceCapabilities
+    {
+        ChainedStructOut *next_in_chain;
+#ifdef WEBGPU_BACKEND_DAWN
+        TextureUsageFlags usages;
+#endif
+        std::vector<TextureFormat> formats;
+        std::vector<PresentMode> present_modes;
+        std::vector<CompositeAlphaMode> alpha_modes;
+    };
+
+    struct TextureViewDescriptor
+    {
+        const ChainedStruct *next_in_chain;
+        std::string label;
+        TextureFormat format;
+        TextureViewDimension dimension;
+        uint32_t base_mip_level;
+        uint32_t mip_level_count;
+        uint32_t base_array_layer;
+        uint32_t array_layer_count;
+        TextureAspect aspect;
+    };
+
     // Callback Types
     using RequestAdapterCallback = std::function<void(RequestAdapterStatus status, const Adapter &adapter,
         const std::string &message)>;
@@ -587,6 +666,41 @@ namespace wgpu
         WGPUInstance m_handle{nullptr};
     };
 
+    class Texture
+    {
+    public:
+        explicit Texture(const WGPUTexture &handle);
+        ~Texture();
+
+        Texture(const Texture &other);
+        Texture(Texture &&other) noexcept;
+        Texture & operator=(const Texture &other);
+        Texture & operator=(Texture &&other) noexcept;
+
+        [[nodiscard]] WGPUTexture c_ptr() const;
+
+        [[nodiscard]] TextureView create_view() const;
+        [[nodiscard]] TextureView create_view(const TextureViewDescriptor &descriptor) const;
+        [[nodiscard]] uint32_t get_depth_or_array_layers() const;
+        [[nodiscard]] TextureDimension get_dimension() const;
+        [[nodiscard]] TextureFormat get_format() const;
+        [[nodiscard]] uint32_t get_height() const;
+        [[nodiscard]] uint32_t get_mip_level_count() const;
+        [[nodiscard]] uint32_t get_sample_count() const;
+        [[nodiscard]] TextureUsageFlags get_usage() const;
+        [[nodiscard]] uint32_t get_width() const;
+
+    private:
+        WGPUTexture m_handle{nullptr};
+    };
+
+    struct SurfaceTexture
+    {
+        Texture texture;
+        bool suboptimal;
+        SurfaceGetCurrentTextureStatus status;
+    };
+
     class Surface
     {
     public:
@@ -601,9 +715,30 @@ namespace wgpu
         [[nodiscard]] WGPUSurface c_ptr() const;
 
         void configure(const SurfaceConfiguration &configuration) const;
+        [[nodiscard]] SurfaceCapabilities get_capabilities(const Adapter &adapter) const;
+        [[nodiscard]] SurfaceTexture get_current_texture() const;
+        void present() const;
+        void unconfigure() const;
 
     private:
         WGPUSurface m_handle{nullptr};
+    };
+
+    class TextureView
+    {
+    public:
+        explicit TextureView(const WGPUTextureView &handle);
+        ~TextureView();
+
+        TextureView(const TextureView &other);
+        TextureView(TextureView &&other) noexcept;
+        TextureView & operator=(const TextureView &other);
+        TextureView & operator=(TextureView &&other) noexcept;
+
+        [[nodiscard]] WGPUTextureView c_ptr() const;
+
+    private:
+        WGPUTextureView m_handle{nullptr};
     };
 
     // Non-member Functions

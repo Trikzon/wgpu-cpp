@@ -138,10 +138,10 @@ namespace wgpu
         WGPUSupportedLimits wgpu_supported_limits{};
         const auto result = wgpuAdapterGetLimits(m_handle, &wgpu_supported_limits);
 
-#if WEBGPU_BACKEND_WGPU
+#ifdef WEBGPU_BACKEND_WGPU
         if (!result)
 #endif
-#if WEBGPU_BACKEND_DAWN
+#ifdef WEBGPU_BACKEND_DAWN
         if (result != WGPUStatus_Success)
 #endif
         {
@@ -158,8 +158,7 @@ namespace wgpu
         wgpuAdapterGetProperties(m_handle, &wgpu_properties);
 #endif
 #ifdef WEBGPU_BACKEND_DAWN
-        const auto result = wgpuAdapterGetProperties(m_handle, &wgpu_properties);
-        if (result != WGPUStatus_Success)
+        if (wgpuAdapterGetProperties(m_handle, &wgpu_properties) != WGPUStatus_Success)
         {
             return std::nullopt;
         }
@@ -406,13 +405,141 @@ namespace wgpu
             .powerPreference = static_cast<WGPUPowerPreference>(options.power_preference),
             .backendType = static_cast<WGPUBackendType>(options.backend_type),
             .forceFallbackAdapter = options.force_fallback_adapter,
-#if WEBGPU_BACKEND_DAWN
+#ifdef WEBGPU_BACKEND_DAWN
             .compatibilityMode = options.compatibility_mode,
 #endif
         };
 
         wgpuInstanceRequestAdapter(m_handle, &wgpu_options, on_request_ended, handle.get());
         return handle;
+    }
+
+    Texture::Texture(const WGPUTexture &handle) : m_handle(handle)
+    {
+
+    }
+
+    Texture::~Texture()
+    {
+        if (m_handle != nullptr)
+        {
+            wgpuTextureRelease(m_handle);
+        }
+    }
+
+    Texture::Texture(const Texture &other) : m_handle(other.m_handle)
+    {
+        if (m_handle != nullptr)
+        {
+#ifdef WEBGPU_BACKEND_WGPU
+            wgpuTextureReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+            wgpuTextureAddRef(m_handle);
+#endif
+        }
+    }
+
+    Texture::Texture(Texture &&other) noexcept
+    {
+        std::swap(m_handle, other.m_handle);
+    }
+
+    Texture & Texture::operator=(const Texture &other)
+    {
+        if (this != &other)
+        {
+            if (m_handle != nullptr)
+            {
+                wgpuTextureRelease(m_handle);
+            }
+
+            m_handle = other.m_handle;
+            if (m_handle != nullptr)
+            {
+#ifdef WEBGPU_BACKEND_WGPU
+                wgpuTextureReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+                wgpuTextureAddRef(m_handle);
+#endif
+            }
+        }
+        return *this;
+    }
+
+    Texture & Texture::operator=(Texture &&other) noexcept
+    {
+        if (this != &other)
+        {
+            std::swap(m_handle, other.m_handle);
+        }
+        return *this;
+    }
+
+    WGPUTexture Texture::c_ptr() const
+    {
+        return m_handle;
+    }
+
+    TextureView Texture::create_view() const
+    {
+        return TextureView{wgpuTextureCreateView(m_handle, nullptr)};
+    }
+
+    TextureView Texture::create_view(const TextureViewDescriptor &descriptor) const
+    {
+        const WGPUTextureViewDescriptor wgpu_descriptor = {
+            .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(descriptor.next_in_chain),
+            .label = descriptor.label.c_str(),
+            .format = static_cast<WGPUTextureFormat>(descriptor.format),
+            .dimension = static_cast<WGPUTextureViewDimension>(descriptor.dimension),
+            .baseMipLevel = descriptor.base_mip_level,
+            .mipLevelCount = descriptor.mip_level_count,
+            .baseArrayLayer = descriptor.base_array_layer,
+            .arrayLayerCount = descriptor.array_layer_count,
+            .aspect = static_cast<WGPUTextureAspect>(descriptor.aspect),
+        };
+
+        return TextureView{wgpuTextureCreateView(m_handle, &wgpu_descriptor)};
+    }
+
+    uint32_t Texture::get_depth_or_array_layers() const
+    {
+        return wgpuTextureGetDepthOrArrayLayers(m_handle);
+    }
+
+    TextureDimension Texture::get_dimension() const
+    {
+        return static_cast<TextureDimension>(wgpuTextureGetDimension(m_handle));
+    }
+
+    TextureFormat Texture::get_format() const
+    {
+        return static_cast<TextureFormat>(wgpuTextureGetFormat(m_handle));
+    }
+
+    uint32_t Texture::get_height() const
+    {
+        return wgpuTextureGetHeight(m_handle);
+    }
+
+    uint32_t Texture::get_mip_level_count() const
+    {
+        return wgpuTextureGetMipLevelCount(m_handle);
+    }
+
+    uint32_t Texture::get_sample_count() const
+    {
+        return wgpuTextureGetSampleCount(m_handle);
+    }
+
+    TextureUsageFlags Texture::get_usage() const
+    {
+        return static_cast<TextureUsageFlags>(wgpuTextureGetUsage(m_handle));
+    }
+
+    uint32_t Texture::get_width() const
+    {
+        return wgpuTextureGetWidth(m_handle);
     }
 
     Surface::Surface(const WGPUSurface &handle) : m_handle(handle)
@@ -496,6 +623,121 @@ namespace wgpu
             .presentMode = static_cast<WGPUPresentMode>(configuration.present_mode),
         };
         wgpuSurfaceConfigure(m_handle, &wgpu_configuration);
+    }
+
+    SurfaceCapabilities Surface::get_capabilities(const Adapter &adapter) const
+    {
+        WGPUSurfaceCapabilities wgpu_capabilities{};
+        // TODO: On Dawn, this returns a WGPUStatus. This should be checked and handled.
+        // However, it only returns WGPUStatus_Error for some reason during testing.
+        wgpuSurfaceGetCapabilities(m_handle, adapter.c_ptr(), &wgpu_capabilities);
+
+        return SurfaceCapabilities{
+            .next_in_chain = reinterpret_cast<ChainedStructOut *>(wgpu_capabilities.nextInChain),
+#ifdef WEBGPU_BACKEND_DAWN
+            .usages = static_cast<TextureUsageFlags>(wgpu_capabilities.usages),
+#endif
+            .formats = {
+                reinterpret_cast<const TextureFormat *>(wgpu_capabilities.formats),
+                reinterpret_cast<const TextureFormat *>(wgpu_capabilities.formats) + wgpu_capabilities.formatCount
+            },
+            .present_modes = {
+                reinterpret_cast<const PresentMode *>(wgpu_capabilities.presentModes),
+                reinterpret_cast<const PresentMode *>(wgpu_capabilities.presentModes) + wgpu_capabilities.presentModeCount
+            },
+            .alpha_modes = {
+                reinterpret_cast<const CompositeAlphaMode *>(wgpu_capabilities.alphaModes),
+                reinterpret_cast<const CompositeAlphaMode *>(wgpu_capabilities.alphaModes) + wgpu_capabilities.alphaModeCount
+            },
+        };
+    }
+
+    SurfaceTexture Surface::get_current_texture() const
+    {
+        WGPUSurfaceTexture wgpu_surface_texture{};
+        wgpuSurfaceGetCurrentTexture(m_handle, &wgpu_surface_texture);
+
+        return {
+            .texture = Texture{wgpu_surface_texture.texture},
+            .suboptimal = static_cast<bool>(wgpu_surface_texture.suboptimal),
+            .status = static_cast<SurfaceGetCurrentTextureStatus>(wgpu_surface_texture.status),
+        };
+    }
+
+    void Surface::present() const
+    {
+        wgpuSurfacePresent(m_handle);
+    }
+
+    void Surface::unconfigure() const
+    {
+        wgpuSurfaceUnconfigure(m_handle);
+    }
+
+    TextureView::TextureView(const WGPUTextureView &handle) : m_handle(handle)
+    {
+
+    }
+
+    TextureView::~TextureView()
+    {
+        if (m_handle != nullptr)
+        {
+            wgpuTextureViewRelease(m_handle);
+        }
+    }
+
+    TextureView::TextureView(const TextureView &other) : m_handle(other.m_handle)
+    {
+        if (m_handle != nullptr)
+        {
+#ifdef WEBGPU_BACKEND_WGPU
+            wgpuTextureViewReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+            wgpuTextureViewAddRef(m_handle);
+#endif
+        }
+    }
+
+    TextureView::TextureView(TextureView &&other) noexcept
+    {
+        std::swap(m_handle, other.m_handle);
+    }
+
+    TextureView& TextureView::operator=(const TextureView &other)
+    {
+        if (this != &other)
+        {
+            if (m_handle != nullptr)
+            {
+                wgpuTextureViewRelease(m_handle);
+            }
+
+            m_handle = other.m_handle;
+            if (m_handle != nullptr)
+            {
+#ifdef WEBGPU_BACKEND_WGPU
+            wgpuTextureViewReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+            wgpuTextureViewAddRef(m_handle);
+#endif
+            }
+        }
+        return *this;
+    }
+
+    TextureView& TextureView::operator=(TextureView &&other) noexcept
+    {
+        if (this != &other)
+        {
+            std::swap(m_handle, other.m_handle);
+        }
+        return *this;
+    }
+
+    WGPUTextureView TextureView::c_ptr() const
+    {
+        return m_handle;
     }
 
     Instance create_instance(const InstanceDescriptor &descriptor)
