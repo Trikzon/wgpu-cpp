@@ -1,5 +1,7 @@
 #include "wgpu.hpp"
 
+#include <iostream>
+
 namespace wgpu
 {
     TextureUsageFlags operator|(const TextureUsageFlags lhs, const TextureUsageFlags rhs)
@@ -189,8 +191,16 @@ namespace wgpu
             const char *message, void *user_data) -> void
         {
             const RequestDeviceCallback& callback = *static_cast<RequestDeviceCallback*>(user_data);
-            callback(static_cast<RequestDeviceStatus>(status), Device{device}, message);
+            callback(static_cast<RequestDeviceStatus>(status), Device{device}, message ? message : "");
         };
+
+        // TODO: Allow user to set uncaptured error callback
+#ifdef WEBGPU_BACKEND_DAWN
+        static auto on_uncaptured_error = [](WGPUErrorType type, const char *message, void *user_data) -> void
+        {
+            std::cerr << "Uncaptured error: " << message << std::endl;
+        };
+#endif
 
         const WGPUDeviceDescriptor wgpu_descriptor = {
             .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(descriptor.next_in_chain),
@@ -204,6 +214,12 @@ namespace wgpu
             },
             .deviceLostCallback = nullptr,
             .deviceLostUserdata = nullptr,
+#ifdef WEBGPU_BACKEND_DAWN
+            .deviceLostCallbackInfo = {},
+            .uncapturedErrorCallbackInfo = {
+                .callback = on_uncaptured_error,
+            },
+#endif
         };
 
         wgpuAdapterRequestDevice(m_handle, &wgpu_descriptor, on_request_ended, handle.get());
@@ -381,7 +397,7 @@ namespace wgpu
             const char *message, void *user_data) -> void
         {
             const RequestAdapterCallback& callback = *static_cast<RequestAdapterCallback*>(user_data);
-            callback(static_cast<RequestAdapterStatus>(status), Adapter{adapter}, message);
+            callback(static_cast<RequestAdapterStatus>(status), Adapter{adapter}, message ? message : "");
         };
 
         const WGPURequestAdapterOptions wgpu_options = {
