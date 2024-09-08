@@ -10,27 +10,39 @@ namespace wgpu
 {
     // RAII Handle Forward Declarations
     class Adapter;
+    class CommandBuffer;
+    class CommandEncoder;
     class Device;
+    class Queue;
+    class RenderPassEncoder;
     class Surface;
     class Texture;
     class TextureView;
 
     // Struct Forward Declarations
+    struct AdapterProperties;
     struct ChainedStruct;
     struct ChainedStructOut;
-    struct AdapterProperties;
-    struct QueueDescriptor;
-    struct Limits;
-    struct RequiredLimits;
+    struct Color;
+    struct CommandBufferDescriptor;
+    struct CommandEncoderDescriptor;
     struct DeviceDescriptor;
+    struct Extent3D;
     struct InstanceFeatures;
     struct InstanceDescriptor;
+    struct Limits;
+    struct QueueDescriptor;
     struct RequestAdapterOptions;
+    struct RequiredLimits;
+    struct RenderPassColorAttachment;
+    struct RenderPassDepthStencilAttachment;
+    struct RenderPassDescriptor;
     struct SupportedLimits;
     struct SurfaceLimits;
     struct SurfaceCapabilities;
     struct SurfaceConfiguration;
     struct SurfaceTexture;
+    struct TextureDescriptor;
     struct TextureViewDescriptor;
 
     // Enums
@@ -140,6 +152,17 @@ namespace wgpu
         Force32                                        = WGPUFeatureName_Force32,
     };
 
+    enum class LoadOp : uint32_t
+    {
+        Undefined            = WGPULoadOp_Undefined,
+        Clear                = WGPULoadOp_Clear,
+        Load                 = WGPULoadOp_Load,
+#ifdef WEBGPU_BACKEND_DAWN
+        ExpandResolveTexture = WGPULoadOp_ExpandResolveTexture,
+#endif
+        Force32              = WGPULoadOp_Force32,
+    };
+
     enum class PowerPreference : uint32_t
     {
         Undefined       = WGPUPowerPreference_Undefined,
@@ -178,6 +201,14 @@ namespace wgpu
         Error           = WGPURequestDeviceStatus_Error,
         Unknown         = WGPURequestDeviceStatus_Unknown,
         Force32         = WGPURequestDeviceStatus_Force32,
+    };
+
+    enum class StoreOp : uint32_t
+    {
+        Undefined = WGPUStoreOp_Undefined,
+        Store     = WGPUStoreOp_Store,
+        Discard   = WGPUStoreOp_Discard,
+        Force32   = WGPUStoreOp_Force32,
     };
 
     enum class SType : uint32_t
@@ -501,8 +532,49 @@ namespace wgpu
 
         [[nodiscard]] WGPUDevice c_ptr() const;
 
+        [[nodiscard]] CommandEncoder create_command_encoder(const CommandEncoderDescriptor &descriptor) const;
+        [[nodiscard]] Texture create_texture(const TextureDescriptor &descriptor) const;
+        [[nodiscard]] Queue get_queue() const;
+
     private:
         WGPUDevice m_handle{nullptr};
+    };
+
+    class CommandBuffer
+    {
+    public:
+        explicit CommandBuffer(const WGPUCommandBuffer &handle);
+        ~CommandBuffer();
+
+        CommandBuffer(const CommandBuffer &other);
+        CommandBuffer(CommandBuffer &&other) noexcept;
+        CommandBuffer & operator=(const CommandBuffer &other);
+        CommandBuffer & operator=(CommandBuffer &&other) noexcept;
+
+        [[nodiscard]] WGPUCommandBuffer c_ptr() const;
+
+    private:
+        WGPUCommandBuffer m_handle{nullptr};
+    };
+
+    class CommandEncoder
+    {
+    public:
+        explicit CommandEncoder(const WGPUCommandEncoder &handle);
+        ~CommandEncoder();
+
+        CommandEncoder(const CommandEncoder &other);
+        CommandEncoder(CommandEncoder &&other) noexcept;
+        CommandEncoder & operator=(const CommandEncoder &other);
+        CommandEncoder & operator=(CommandEncoder &&other) noexcept;
+
+        [[nodiscard]] WGPUCommandEncoder c_ptr() const;
+
+        [[nodiscard]] RenderPassEncoder begin_render_pass(const RenderPassDescriptor &descriptor) const;
+        [[nodiscard]] CommandBuffer finish(const CommandBufferDescriptor &descriptor) const;
+
+    private:
+        WGPUCommandEncoder m_handle{nullptr};
     };
 
     class Instance
@@ -525,6 +597,44 @@ namespace wgpu
 
     private:
         WGPUInstance m_handle{nullptr};
+    };
+
+    class Queue
+    {
+    public:
+        explicit Queue(const WGPUQueue &handle);
+        ~Queue();
+
+        Queue(const Queue &other);
+        Queue(Queue &&other) noexcept;
+        Queue & operator=(const Queue &other);
+        Queue & operator=(Queue &&other) noexcept;
+
+        [[nodiscard]] WGPUQueue c_ptr() const;
+
+        void submit(const std::vector<CommandBuffer> &commands) const;
+
+    private:
+        WGPUQueue m_handle{nullptr};
+    };
+
+    class RenderPassEncoder
+    {
+    public:
+        explicit RenderPassEncoder(const WGPURenderPassEncoder &handle);
+        ~RenderPassEncoder();
+
+        RenderPassEncoder(const RenderPassEncoder &other);
+        RenderPassEncoder(RenderPassEncoder &&other) noexcept;
+        RenderPassEncoder & operator=(const RenderPassEncoder &other);
+        RenderPassEncoder & operator=(RenderPassEncoder &&other) noexcept;
+
+        [[nodiscard]] WGPURenderPassEncoder c_ptr() const;
+
+        void end() const;
+
+    private:
+        WGPURenderPassEncoder m_handle{nullptr};
     };
 
     class Surface
@@ -596,18 +706,6 @@ namespace wgpu
     };
 
     // Structs
-    struct ChainedStruct
-    {
-        const ChainedStruct *next_in_chain;
-        SType s_type;
-    };
-
-    struct ChainedStructOut
-    {
-        ChainedStructOut *next_in_chain;
-        SType s_type;
-    };
-
     struct AdapterProperties
     {
         ChainedStructOut *next_in_chain;
@@ -621,10 +719,75 @@ namespace wgpu
         BackendType backend_type;
     };
 
+    struct ChainedStruct
+    {
+        const ChainedStruct *next_in_chain;
+        SType s_type;
+    };
+
+    struct ChainedStructOut
+    {
+        ChainedStructOut *next_in_chain;
+        SType s_type;
+    };
+
+    struct Color
+    {
+        double r;
+        double g;
+        double b;
+        double a;
+    };
+
+    struct CommandBufferDescriptor
+    {
+        const ChainedStruct *next_in_chain;
+        std::string label;
+    };
+
+    struct CommandEncoderDescriptor
+    {
+        const ChainedStruct *next_in_chain;
+        std::string label;
+    };
+
     struct QueueDescriptor
     {
         const ChainedStruct *next_in_chain;
         std::string label;
+    };
+
+    struct DeviceDescriptor
+    {
+        const ChainedStruct *next_in_chain;
+        std::string label;
+        std::vector<FeatureName> required_features;
+        WGPU_NULLABLE const RequiredLimits *required_limits;
+        QueueDescriptor default_queue;
+    };
+
+    struct Extent3D
+    {
+        uint32_t width;
+        uint32_t height;
+        uint32_t depth_or_array_layers;
+    };
+
+#ifdef WEBGPU_BACKEND_DAWN
+    struct InstanceFeatures
+    {
+        const ChainedStruct *next_in_chain;
+        bool timed_wait_any_enable;
+        size_t timed_wait_any_max_count;
+    };
+#endif
+
+    struct InstanceDescriptor
+    {
+        const ChainedStruct *next_in_chain;
+#ifdef WEBGPU_BACKEND_DAWN
+        InstanceFeatures features;
+#endif
     };
 
     struct Limits
@@ -663,38 +826,6 @@ namespace wgpu
         uint32_t max_compute_workgroups_per_dimension;
     };
 
-    struct RequiredLimits
-    {
-        const ChainedStruct *next_in_chain;
-        Limits limits;
-    };
-
-    struct DeviceDescriptor
-    {
-        const ChainedStruct *next_in_chain;
-        std::string label;
-        std::vector<FeatureName> required_features;
-        WGPU_NULLABLE const RequiredLimits *required_limits;
-        QueueDescriptor default_queue;
-    };
-
-#ifdef WEBGPU_BACKEND_DAWN
-    struct InstanceFeatures
-    {
-        const ChainedStruct *next_in_chain;
-        bool timed_wait_any_enable;
-        size_t timed_wait_any_max_count;
-    };
-#endif
-
-    struct InstanceDescriptor
-    {
-        const ChainedStruct *next_in_chain;
-#ifdef WEBGPU_BACKEND_DAWN
-        InstanceFeatures features;
-#endif
-    };
-
     struct RequestAdapterOptions
     {
         const ChainedStruct *next_in_chain;
@@ -705,6 +836,48 @@ namespace wgpu
 #ifdef WEBGPU_BACKEND_DAWN
         bool compatibility_mode;
 #endif
+    };
+
+    struct RequiredLimits
+    {
+        const ChainedStruct *next_in_chain;
+        Limits limits;
+    };
+
+    struct RenderPassColorAttachment
+    {
+        const ChainedStruct *next_in_chain;
+        std::optional<TextureView> view;
+#ifdef WEBGPU_BACKEND_DAWN
+        uint32_t depth_slice = WGPU_DEPTH_SLICE_UNDEFINED;
+#endif
+        std::optional<TextureView> resolve_target;
+        LoadOp load_op;
+        StoreOp store_op;
+        Color clear_value;
+    };
+
+    struct RenderPassDepthStencilAttachment
+    {
+        TextureView view;
+        LoadOp depth_load_op;
+        StoreOp depth_store_op;
+        float depth_clear_value;
+        bool depth_read_only;
+        LoadOp stencil_load_op;
+        StoreOp stencil_store_op;
+        uint32_t stencil_clear_value;
+        bool stencil_read_only;
+    };
+
+    struct RenderPassDescriptor
+    {
+        const ChainedStruct *next_in_chain;
+        std::string label;
+        std::vector<RenderPassColorAttachment> color_attachments;
+        std::optional<RenderPassDepthStencilAttachment> depth_stencil_attachment;
+        // TODO: QuerySet
+        // TODO: RenderPassTimestampWrites
     };
 
     struct SupportedLimits
@@ -742,6 +915,19 @@ namespace wgpu
         Texture texture;
         bool suboptimal;
         SurfaceGetCurrentTextureStatus status;
+    };
+
+    struct TextureDescriptor
+    {
+        const ChainedStruct *next_in_chain;
+        std::string label;
+        TextureUsageFlags usage;
+        TextureDimension dimension;
+        Extent3D size;
+        TextureFormat format;
+        uint32_t mip_level_count;
+        uint32_t sample_count;
+        std::vector<TextureFormat> view_formats;
     };
 
     struct TextureViewDescriptor

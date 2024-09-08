@@ -225,6 +225,197 @@ namespace wgpu
         return handle;
     }
 
+    CommandBuffer::CommandBuffer(const WGPUCommandBuffer &handle) : m_handle(handle)
+    {
+
+    }
+
+    CommandBuffer::~CommandBuffer()
+    {
+        if (m_handle != nullptr)
+        {
+            wgpuCommandBufferRelease(m_handle);
+        }
+    }
+
+    CommandBuffer::CommandBuffer(const CommandBuffer &other) : m_handle(other.m_handle)
+    {
+        if (m_handle != nullptr)
+        {
+#ifdef WEBGPU_BACKEND_WGPU
+            wgpuCommandBufferReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+            wgpuCommandBufferAddRef(m_handle);
+#endif
+        }
+    }
+
+    CommandBuffer::CommandBuffer(CommandBuffer &&other) noexcept
+    {
+        std::swap(m_handle, other.m_handle);
+    }
+
+    CommandBuffer & CommandBuffer::operator=(const CommandBuffer &other)
+    {
+        if (this != &other)
+        {
+            if (m_handle != nullptr)
+            {
+                wgpuCommandBufferRelease(m_handle);
+            }
+
+            m_handle = other.m_handle;
+            if (m_handle != nullptr)
+            {
+#ifdef WEBGPU_BACKEND_WGPU
+                wgpuCommandBufferReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+                wgpuCommandBufferAddRef(m_handle);
+#endif
+            }
+        }
+        return *this;
+    }
+
+    CommandBuffer & CommandBuffer::operator=(CommandBuffer &&other) noexcept
+    {
+        if (this != &other)
+        {
+            std::swap(m_handle, other.m_handle);
+        }
+        return *this;
+    }
+
+    WGPUCommandBuffer CommandBuffer::c_ptr() const
+    {
+        return m_handle;
+    }
+
+    CommandEncoder::CommandEncoder(const WGPUCommandEncoder &handle) : m_handle(handle)
+    {
+
+    }
+
+    CommandEncoder::~CommandEncoder()
+    {
+        if (m_handle != nullptr)
+        {
+            wgpuCommandEncoderRelease(m_handle);
+        }
+    }
+
+    CommandEncoder::CommandEncoder(const CommandEncoder &other) : m_handle(other.m_handle)
+    {
+        if (m_handle != nullptr)
+        {
+#ifdef WEBGPU_BACKEND_WGPU
+            wgpuCommandEncoderReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+            wgpuCommandEncoderAddRef(m_handle);
+#endif
+        }
+    }
+
+    CommandEncoder::CommandEncoder(CommandEncoder &&other) noexcept
+    {
+        std::swap(m_handle, other.m_handle);
+    }
+
+    CommandEncoder & CommandEncoder::operator=(const CommandEncoder &other)
+    {
+        if (this != &other)
+        {
+            if (m_handle != nullptr)
+            {
+                wgpuCommandEncoderRelease(m_handle);
+            }
+
+            m_handle = other.m_handle;
+            if (m_handle != nullptr)
+            {
+#ifdef WEBGPU_BACKEND_WGPU
+                wgpuCommandEncoderReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+                wgpuCommandEncoderAddRef(m_handle);
+#endif
+            }
+        }
+        return *this;
+    }
+
+    CommandEncoder & CommandEncoder::operator=(CommandEncoder &&other) noexcept
+    {
+        if (this != &other)
+        {
+            std::swap(m_handle, other.m_handle);
+        }
+        return *this;
+    }
+
+    WGPUCommandEncoder CommandEncoder::c_ptr() const
+    {
+        return m_handle;
+    }
+
+    RenderPassEncoder CommandEncoder::begin_render_pass(const RenderPassDescriptor &descriptor) const
+    {
+        std::vector<WGPURenderPassColorAttachment> wgpu_color_attachments;
+        wgpu_color_attachments.reserve(descriptor.color_attachments.size());
+        for (const auto &color_attachment : descriptor.color_attachments)
+        {
+            wgpu_color_attachments.push_back({
+                .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(color_attachment.next_in_chain),
+                .view = color_attachment.view ? color_attachment.view->c_ptr() : nullptr,
+#ifdef WEBGPU_BACKEND_DAWN
+                .depthSlice = color_attachment.depth_slice,
+#endif
+                .resolveTarget = color_attachment.resolve_target ? color_attachment.resolve_target->c_ptr() : nullptr,
+                .loadOp = static_cast<WGPULoadOp>(color_attachment.load_op),
+                .storeOp = static_cast<WGPUStoreOp>(color_attachment.store_op),
+                .clearValue = *reinterpret_cast<const WGPUColor*>(&color_attachment.clear_value),
+            });
+        }
+
+        WGPURenderPassDepthStencilAttachment wgpu_depth_stencil_attachment{};
+        if (descriptor.depth_stencil_attachment)
+        {
+            wgpu_depth_stencil_attachment = {
+                .view = descriptor.depth_stencil_attachment->view.c_ptr(),
+                .depthLoadOp = static_cast<WGPULoadOp>(descriptor.depth_stencil_attachment->depth_load_op),
+                .depthStoreOp = static_cast<WGPUStoreOp>(descriptor.depth_stencil_attachment->depth_store_op),
+                .depthClearValue = descriptor.depth_stencil_attachment->depth_clear_value,
+                .stencilLoadOp = static_cast<WGPULoadOp>(descriptor.depth_stencil_attachment->stencil_load_op),
+                .stencilStoreOp = static_cast<WGPUStoreOp>(descriptor.depth_stencil_attachment->stencil_store_op),
+                .stencilClearValue = descriptor.depth_stencil_attachment->stencil_clear_value,
+                .stencilReadOnly = descriptor.depth_stencil_attachment->stencil_read_only,
+            };
+        }
+
+        const WGPURenderPassDescriptor wgpu_descriptor
+        {
+            .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(descriptor.next_in_chain),
+            .label = descriptor.label.c_str(),
+            .colorAttachmentCount = wgpu_color_attachments.size(),
+            .colorAttachments = wgpu_color_attachments.data(),
+            .depthStencilAttachment = descriptor.depth_stencil_attachment ? &wgpu_depth_stencil_attachment : nullptr,
+            .occlusionQuerySet = nullptr,
+            .timestampWrites = nullptr,
+        };
+
+        return RenderPassEncoder{wgpuCommandEncoderBeginRenderPass(m_handle, &wgpu_descriptor)};
+    }
+
+    CommandBuffer CommandEncoder::finish(const CommandBufferDescriptor &descriptor) const
+    {
+        const WGPUCommandBufferDescriptor wgpu_descriptor
+        {
+            .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(descriptor.next_in_chain),
+            .label = descriptor.label.c_str(),
+        };
+
+        return CommandBuffer{wgpuCommandEncoderFinish(m_handle, &wgpu_descriptor)};
+    }
+
     Device::Device(const WGPUDevice &handle) : m_handle(handle)
     {
 
@@ -289,6 +480,44 @@ namespace wgpu
     WGPUDevice Device::c_ptr() const
     {
         return m_handle;
+    }
+
+    CommandEncoder Device::create_command_encoder(const CommandEncoderDescriptor &descriptor) const
+    {
+        const WGPUCommandEncoderDescriptor wgpu_descriptor = {
+            .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(descriptor.next_in_chain),
+            .label = descriptor.label.c_str(),
+        };
+
+        return CommandEncoder{wgpuDeviceCreateCommandEncoder(m_handle, &wgpu_descriptor)};
+    }
+
+    Texture Device::create_texture(const TextureDescriptor &descriptor) const
+    {
+        const WGPUTextureDescriptor wgpu_descriptor
+        {
+            .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(descriptor.next_in_chain),
+            .label = descriptor.label.c_str(),
+            .usage = static_cast<WGPUTextureUsageFlags>(descriptor.usage),
+            .dimension = static_cast<WGPUTextureDimension>(descriptor.dimension),
+            .size = {
+                .width = descriptor.size.width,
+                .height = descriptor.size.height,
+                .depthOrArrayLayers = descriptor.size.depth_or_array_layers,
+            },
+            .format = static_cast<WGPUTextureFormat>(descriptor.format),
+            .mipLevelCount = descriptor.mip_level_count,
+            .sampleCount = descriptor.sample_count,
+            .viewFormatCount = descriptor.view_formats.size(),
+            .viewFormats = reinterpret_cast<const WGPUTextureFormat *>(descriptor.view_formats.data()),
+        };
+
+        return Texture{wgpuDeviceCreateTexture(m_handle, &wgpu_descriptor)};
+    }
+
+    Queue Device::get_queue() const
+    {
+        return Queue{wgpuDeviceGetQueue(m_handle)};
     }
 
     Instance::Instance(const WGPUInstance &handle) : m_handle(handle)
@@ -412,6 +641,153 @@ namespace wgpu
 
         wgpuInstanceRequestAdapter(m_handle, &wgpu_options, on_request_ended, handle.get());
         return handle;
+    }
+
+    Queue::Queue(const WGPUQueue &handle) : m_handle(handle)
+    {
+
+    }
+
+    Queue::~Queue()
+    {
+        if (m_handle != nullptr)
+        {
+            wgpuQueueRelease(m_handle);
+        }
+    }
+
+    Queue::Queue(const Queue &other) : m_handle(other.m_handle)
+    {
+        if (m_handle != nullptr)
+        {
+#ifdef WEBGPU_BACKEND_WGPU
+            wgpuQueueReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+            wgpuQueueAddRef(m_handle);
+#endif
+        }
+    }
+
+    Queue::Queue(Queue &&other) noexcept
+    {
+        std::swap(m_handle, other.m_handle);
+    }
+
+    Queue& Queue::operator=(const Queue &other)
+    {
+        if (this != &other)
+        {
+            if (m_handle != nullptr)
+            {
+                wgpuQueueRelease(m_handle);
+            }
+
+            if (m_handle != nullptr)
+            {
+#ifdef WEBGPU_BACKEND_WGPU
+                wgpuQueueReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+                wgpuQueueAddRef(m_handle);
+#endif
+            }
+        }
+        return *this;
+    }
+
+    Queue& Queue::operator=(Queue &&other) noexcept
+    {
+        if (this != &other)
+        {
+            std::swap(m_handle, other.m_handle);
+        }
+        return *this;
+    }
+
+    WGPUQueue Queue::c_ptr() const
+    {
+        return m_handle;
+    }
+
+    void Queue::submit(const std::vector<CommandBuffer> &commands) const
+    {
+        std::vector<WGPUCommandBuffer> wgpu_commands;
+        wgpu_commands.reserve(commands.size());
+        for (const auto &command : commands)
+        {
+            wgpu_commands.push_back(command.c_ptr());
+        }
+
+        wgpuQueueSubmit(m_handle, wgpu_commands.size(), wgpu_commands.data());
+    }
+
+    RenderPassEncoder::RenderPassEncoder(const WGPURenderPassEncoder &handle) : m_handle(handle)
+    {
+
+    }
+
+    RenderPassEncoder::~RenderPassEncoder()
+    {
+        if (m_handle != nullptr)
+        {
+            wgpuRenderPassEncoderRelease(m_handle);
+        }
+    }
+
+    RenderPassEncoder::RenderPassEncoder(const RenderPassEncoder &other) : m_handle(other.m_handle)
+    {
+        if (m_handle != nullptr)
+        {
+#ifdef WEBGPU_BACKEND_WGPU
+            wgpuRenderPassEncoderReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+            wgpuRenderPassEncoderAddRef(m_handle);
+#endif
+        }
+    }
+
+    RenderPassEncoder::RenderPassEncoder(RenderPassEncoder &&other) noexcept
+    {
+        std::swap(m_handle, other.m_handle);
+    }
+
+    RenderPassEncoder& RenderPassEncoder::operator=(const RenderPassEncoder &other)
+    {
+        if (this != &other)
+        {
+            if (m_handle != nullptr)
+            {
+                wgpuRenderPassEncoderRelease(m_handle);
+            }
+
+            if (m_handle != nullptr)
+            {
+#ifdef WEBGPU_BACKEND_WGPU
+                wgpuRenderPassEncoderReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+                wgpuRenderPassEncoderAddRef(m_handle);
+#endif
+            }
+        }
+        return *this;
+    }
+
+    RenderPassEncoder& RenderPassEncoder::operator=(RenderPassEncoder &&other) noexcept
+    {
+        if (this != &other)
+        {
+            std::swap(m_handle, other.m_handle);
+        }
+        return *this;
+    }
+
+    WGPURenderPassEncoder RenderPassEncoder::c_ptr() const
+    {
+        return m_handle;
+    }
+
+    void RenderPassEncoder::end() const
+    {
+        wgpuRenderPassEncoderEnd(m_handle);
     }
 
     Surface::Surface(const WGPUSurface &handle) : m_handle(handle)
