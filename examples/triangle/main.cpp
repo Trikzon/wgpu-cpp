@@ -97,6 +97,7 @@ int main()
         {
             .module = shader_module,
             .entry_point = "fs_main",
+            .constants = {},
             .targets = std::vector<wgpu::ColorTargetState>
             {
                 {
@@ -105,21 +106,20 @@ int main()
                     {
                         .color = wgpu::BlendComponent
                         {
+                            .operation = wgpu::BlendOperation::Add,
                             .src_factor = wgpu::BlendFactor::SrcAlpha,
                             .dst_factor = wgpu::BlendFactor::OneMinusSrcAlpha,
-                            .operation = wgpu::BlendOperation::Add,
                         },
                         .alpha = wgpu::BlendComponent
                         {
+                            .operation = wgpu::BlendOperation::Add,
                             .src_factor = wgpu::BlendFactor::Zero,
                             .dst_factor = wgpu::BlendFactor::One,
-                            .operation = wgpu::BlendOperation::Add,
                         },
                     },
                     .write_mask = wgpu::ColorWriteMaskFlags::All,
                 }
             },
-            .constants = {},
         }
     });
 

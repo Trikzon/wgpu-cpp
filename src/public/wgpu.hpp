@@ -2,6 +2,7 @@
 
 #include <expected>
 #include <functional>
+#include <memory>
 #include <optional>
 
 #include <webgpu/webgpu.h>
@@ -991,7 +992,7 @@ namespace wgpu
     class TextureView
     {
     public:
-        explicit TextureView(const WGPUTextureView &handle);
+        explicit TextureView(const WGPUTexture &texture, const WGPUTextureView &handle);
         ~TextureView();
 
         TextureView(const TextureView &other);
@@ -1002,6 +1003,8 @@ namespace wgpu
         [[nodiscard]] WGPUTextureView c_ptr() const;
 
     private:
+        // On WGPU, WGPUTextureView needs its WGPUTexture to stick around. Otherwise it fails.
+        WGPUTexture m_texture{nullptr};
         WGPUTextureView m_handle{nullptr};
     };
 

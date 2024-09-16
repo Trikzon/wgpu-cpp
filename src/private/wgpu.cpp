@@ -994,7 +994,10 @@ namespace wgpu
 
     void Instance::process_events() const
     {
+        // wgpuInstanceProcessEvents exists on WGPU, but panics if called.
+#ifdef WEBGPU_BACKEND_DAWN
         wgpuInstanceProcessEvents(m_handle);
+#endif
     }
 
     std::unique_ptr<RequestAdapterCallback> Instance::request_adapter(const RequestAdapterOptions &options,
@@ -1585,7 +1588,7 @@ namespace wgpu
 
     TextureView Texture::create_view() const
     {
-        return TextureView{wgpuTextureCreateView(m_handle, nullptr)};
+        return TextureView{m_handle, wgpuTextureCreateView(m_handle, nullptr)};
     }
 
     TextureView Texture::create_view(const TextureViewDescriptor &descriptor) const
@@ -1603,7 +1606,7 @@ namespace wgpu
             .aspect = static_cast<WGPUTextureAspect>(descriptor.aspect),
         };
 
-        return TextureView{wgpuTextureCreateView(m_handle, &wgpu_descriptor)};
+        return TextureView{m_handle, wgpuTextureCreateView(m_handle, &wgpu_descriptor)};
     }
 
     uint32_t Texture::get_depth_or_array_layers() const
@@ -1646,21 +1649,43 @@ namespace wgpu
         return wgpuTextureGetWidth(m_handle);
     }
 
-    TextureView::TextureView(const WGPUTextureView &handle) : m_handle(handle)
+    TextureView::TextureView(const WGPUTexture &texture, const WGPUTextureView &handle)
+        : m_texture(texture), m_handle(handle)
     {
-
+        if (m_texture != nullptr)
+        {
+#ifdef WEBGPU_BACKEND_WGPU
+            wgpuTextureReference(m_texture);
+#elif WEBGPU_BACKEND_DAWN
+            wgpuTextureAddRef(m_texture);
+#endif
+        }
     }
 
     TextureView::~TextureView()
     {
+        if (m_texture != nullptr)
+        {
+            wgpuTextureRelease(m_texture);
+        }
+
         if (m_handle != nullptr)
         {
             wgpuTextureViewRelease(m_handle);
         }
     }
 
-    TextureView::TextureView(const TextureView &other) : m_handle(other.m_handle)
+    TextureView::TextureView(const TextureView &other) : m_texture(other.m_texture), m_handle(other.m_handle)
     {
+        if (m_texture != nullptr)
+        {
+#ifdef WEBGPU_BACKEND_WGPU
+            wgpuTextureReference(m_texture);
+#elif WEBGPU_BACKEND_DAWN
+            wgpuTextureAddRef(m_texture);
+#endif
+        }
+
         if (m_handle != nullptr)
         {
 #ifdef WEBGPU_BACKEND_WGPU
@@ -1673,6 +1698,7 @@ namespace wgpu
 
     TextureView::TextureView(TextureView &&other) noexcept
     {
+        std::swap(m_texture, other.m_texture);
         std::swap(m_handle, other.m_handle);
     }
 
@@ -1680,9 +1706,24 @@ namespace wgpu
     {
         if (this != &other)
         {
+            if (m_texture != nullptr)
+            {
+                wgpuTextureRelease(m_texture);
+            }
+
             if (m_handle != nullptr)
             {
                 wgpuTextureViewRelease(m_handle);
+            }
+
+            m_texture = other.m_texture;
+            if (m_texture != nullptr)
+            {
+#ifdef WEBGPU_BACKEND_WGPU
+            wgpuTextureReference(m_texture);
+#elif WEBGPU_BACKEND_DAWN
+            wgpuTextureAddRef(m_texture);
+#endif
             }
 
             m_handle = other.m_handle;
@@ -1702,6 +1743,7 @@ namespace wgpu
     {
         if (this != &other)
         {
+            std::swap(m_texture, other.m_texture);
             std::swap(m_handle, other.m_handle);
         }
         return *this;
