@@ -26,7 +26,8 @@ int main()
 
     const auto surface_capabilities = surface.get_capabilities(adapter);
 
-    surface.configure({
+    surface.configure(
+    {
         .device = device,
         .format = surface_capabilities.formats[0],
         .usage = wgpu::TextureUsageFlags::RenderAttachment,
@@ -47,8 +48,9 @@ int main()
 
         const auto render_pass = command_encoder.begin_render_pass({
             .label = "Render Pass",
-            .color_attachments = {
-                wgpu::RenderPassColorAttachment{
+            .color_attachments = std::vector<wgpu::RenderPassColorAttachment>
+            {
+                {
                     .view = surface_view,
                     .resolve_target = std::nullopt,
                     .load_op = wgpu::LoadOp::Clear,

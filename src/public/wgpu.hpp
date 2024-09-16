@@ -10,40 +10,67 @@ namespace wgpu
 {
     // RAII Handle Forward Declarations
     class Adapter;
+    class BindGroupLayout;
     class CommandBuffer;
     class CommandEncoder;
     class Device;
+    class PipelineLayout;
     class Queue;
     class RenderPassEncoder;
+    class RenderPipeline;
+    class ShaderModule;
     class Surface;
     class Texture;
     class TextureView;
 
     // Struct Forward Declarations
     struct AdapterProperties;
+    struct BindGroupLayoutDescriptor;
+    struct BindGroupLayoutEntry;
+    struct BlendComponent;
+    struct BlendState;
+    struct BufferBindingLayout;
     struct ChainedStruct;
     struct ChainedStructOut;
     struct Color;
+    struct ColorTargetState;
     struct CommandBufferDescriptor;
     struct CommandEncoderDescriptor;
+    struct ConstantEntry;
+    struct DepthStencilState;
     struct DeviceDescriptor;
     struct Extent3D;
+    struct FragmentState;
     struct InstanceFeatures;
     struct InstanceDescriptor;
     struct Limits;
+    struct MultisampleState;
+    struct PipelineLayoutDescriptor;
+    struct PrimitiveState;
     struct QueueDescriptor;
     struct RequestAdapterOptions;
     struct RequiredLimits;
     struct RenderPassColorAttachment;
     struct RenderPassDepthStencilAttachment;
     struct RenderPassDescriptor;
+    struct RenderPipelineDescriptor;
+    struct SamplerBindingLayout;
+    struct ShaderModuleDescriptor;
+    struct ShaderModuleSPIRVDescriptor;
+    struct ShaderModuleWGSLDescriptor;
+    struct StencilFaceState;
+    struct StorageTextureBindingLayout;
     struct SupportedLimits;
     struct SurfaceLimits;
     struct SurfaceCapabilities;
     struct SurfaceConfiguration;
     struct SurfaceTexture;
+    struct TextureBindingLayout;
     struct TextureDescriptor;
     struct TextureViewDescriptor;
+    struct VertexAttribute;
+    struct VertexBufferLayout;
+    struct VertexState;
 
     // Enums
     enum class AdapterType : uint32_t
@@ -52,7 +79,6 @@ namespace wgpu
         IntegratedGPU = WGPUAdapterType_IntegratedGPU,
         CPU           = WGPUAdapterType_CPU,
         Unknown       = WGPUAdapterType_Unknown,
-        Force32       = WGPUAdapterType_Force32,
     };
 
     enum class BackendType : uint32_t
@@ -66,7 +92,81 @@ namespace wgpu
         Vulkan    = WGPUBackendType_Vulkan,
         OpenGL    = WGPUBackendType_OpenGL,
         OpenGLES  = WGPUBackendType_OpenGLES,
-        Force32   = WGPUBackendType_Force32,
+    };
+
+    enum class BlendFactor : uint32_t
+    {
+#ifdef WEBGPU_BACKEND_DAWN
+        Undefined         = WGPUBlendFactor_Undefined,
+#endif
+        Zero              = WGPUBlendFactor_Zero,
+        One               = WGPUBlendFactor_One,
+        Src               = WGPUBlendFactor_Src,
+        OneMinusSrc       = WGPUBlendFactor_OneMinusSrc,
+        SrcAlpha          = WGPUBlendFactor_SrcAlpha,
+        OneMinusSrcAlpha  = WGPUBlendFactor_OneMinusSrcAlpha,
+        Dst               = WGPUBlendFactor_Dst,
+        OneMinusDst       = WGPUBlendFactor_OneMinusDst,
+        DstAlpha          = WGPUBlendFactor_DstAlpha,
+        OneMinusDstAlpha  = WGPUBlendFactor_OneMinusDstAlpha,
+        SrcAlphaSaturated = WGPUBlendFactor_SrcAlphaSaturated,
+        Constant          = WGPUBlendFactor_Constant,
+        OneMinusConstant  = WGPUBlendFactor_OneMinusConstant,
+#ifdef WEBGPU_BACKEND_DAWN
+        Src1              = WGPUBlendFactor_Src1,
+        OneMinusSrc1      = WGPUBlendFactor_OneMinusSrc1,
+        Src1Alpha         = WGPUBlendFactor_Src1Alpha,
+        OneMinusSrc1Alpha = WGPUBlendFactor_OneMinusSrc1Alpha,
+#endif
+    };
+
+    enum class BlendOperation : uint32_t
+    {
+#ifdef WEBGPU_BACKEND_DAWN
+        Undefined       = WGPUBlendOperation_Undefined,
+#endif
+        Add             = WGPUBlendOperation_Add,
+        Subtract        = WGPUBlendOperation_Subtract,
+        ReverseSubtract = WGPUBlendOperation_ReverseSubtract,
+        Min             = WGPUBlendOperation_Min,
+        Max             = WGPUBlendOperation_Max,
+    };
+
+    enum class BufferBindingType : uint32_t
+    {
+        Undefined       = WGPUBufferBindingType_Undefined,
+        Uniform         = WGPUBufferBindingType_Uniform,
+        Storage         = WGPUBufferBindingType_Storage,
+        ReadOnlyStorage = WGPUBufferBindingType_ReadOnlyStorage,
+    };
+
+    enum class ColorWriteMaskFlags : uint32_t
+    {
+        None = WGPUColorWriteMask_None,
+        Red = WGPUColorWriteMask_Red,
+        Green = WGPUColorWriteMask_Green,
+        Blue = WGPUColorWriteMask_Blue,
+        Alpha = WGPUColorWriteMask_Alpha,
+        All = WGPUColorWriteMask_All,
+    };
+
+    ColorWriteMaskFlags operator|(ColorWriteMaskFlags lhs, ColorWriteMaskFlags rhs);
+    ColorWriteMaskFlags & operator|=(ColorWriteMaskFlags& lhs, ColorWriteMaskFlags rhs);
+    ColorWriteMaskFlags operator&(ColorWriteMaskFlags lhs, ColorWriteMaskFlags rhs);
+    ColorWriteMaskFlags & operator&=(ColorWriteMaskFlags& lhs, ColorWriteMaskFlags rhs);
+    bool operator==(ColorWriteMaskFlags lhs, ColorWriteMaskFlags rhs);
+
+    enum class CompareFunction : uint32_t
+    {
+        Undefined    = WGPUCompareFunction_Undefined,
+        Never        = WGPUCompareFunction_Never,
+        Less         = WGPUCompareFunction_Less,
+        Equal        = WGPUCompareFunction_Equal,
+        LessEqual    = WGPUCompareFunction_LessEqual,
+        Greater      = WGPUCompareFunction_Greater,
+        NotEqual     = WGPUCompareFunction_NotEqual,
+        GreaterEqual = WGPUCompareFunction_GreaterEqual,
+        Always       = WGPUCompareFunction_Always,
     };
 
     enum class CompositeAlphaMode : uint32_t
@@ -76,7 +176,16 @@ namespace wgpu
         Premultiplied   = WGPUCompositeAlphaMode_Premultiplied,
         Unpremultiplied = WGPUCompositeAlphaMode_Unpremultiplied,
         Inherit         = WGPUCompositeAlphaMode_Inherit,
-        Force32         = WGPUCompositeAlphaMode_Force32,
+    };
+
+    enum class CullMode : uint32_t
+    {
+#ifdef WEBGPU_BACKEND_DAWN
+        Undefined = WGPUCullMode_Undefined,
+#endif
+        None      = WGPUCullMode_None,
+        Front     = WGPUCullMode_Front,
+        Back      = WGPUCullMode_Back,
     };
 
     enum class FeatureName : uint32_t
@@ -149,7 +258,22 @@ namespace wgpu
         ShaderModuleCompilationOptions                 = WGPUFeatureName_ShaderModuleCompilationOptions,
         DawnLoadResolveTexture                         = WGPUFeatureName_DawnLoadResolveTexture,
 #endif
-        Force32                                        = WGPUFeatureName_Force32,
+    };
+
+    enum class FrontFace : uint32_t
+    {
+#ifdef WEBGPU_BACKEND_DAWN
+        Undefined = WGPUFrontFace_Undefined,
+#endif
+        CCW       = WGPUFrontFace_CCW,
+        CW        = WGPUFrontFace_CW,
+    };
+
+    enum class IndexFormat : uint32_t
+    {
+        Undefined = WGPUIndexFormat_Undefined,
+        Uint16    = WGPUIndexFormat_Uint16,
+        Uint32    = WGPUIndexFormat_Uint32,
     };
 
     enum class LoadOp : uint32_t
@@ -160,7 +284,6 @@ namespace wgpu
 #ifdef WEBGPU_BACKEND_DAWN
         ExpandResolveTexture = WGPULoadOp_ExpandResolveTexture,
 #endif
-        Force32              = WGPULoadOp_Force32,
     };
 
     enum class PowerPreference : uint32_t
@@ -168,7 +291,6 @@ namespace wgpu
         Undefined       = WGPUPowerPreference_Undefined,
         LowPower        = WGPUPowerPreference_LowPower,
         HighPerformance = WGPUPowerPreference_HighPerformance,
-        Force32         = WGPUPowerPreference_Force32,
     };
 
     enum class PresentMode : uint32_t
@@ -177,7 +299,18 @@ namespace wgpu
         FifoRelaxed = WGPUPresentMode_FifoRelaxed,
         Immediate   = WGPUPresentMode_Immediate,
         Mailbox     = WGPUPresentMode_Mailbox,
-        Force32     = WGPUPresentMode_Force32,
+    };
+
+    enum class PrimitiveTopology : uint32_t
+    {
+#ifdef WEBGPU_BACKEND_DAWN
+        Undefined     = WGPUPrimitiveTopology_Undefined,
+#endif
+        PointList     = WGPUPrimitiveTopology_PointList,
+        LineList      = WGPUPrimitiveTopology_LineList,
+        LineStrip     = WGPUPrimitiveTopology_LineStrip,
+        TriangleList  = WGPUPrimitiveTopology_TriangleList,
+        TriangleStrip = WGPUPrimitiveTopology_TriangleStrip,
     };
 
     enum class RequestAdapterStatus : uint32_t
@@ -189,7 +322,6 @@ namespace wgpu
         Unavailable     = WGPURequestAdapterStatus_Unavailable,
         Error           = WGPURequestAdapterStatus_Error,
         Unknown         = WGPURequestAdapterStatus_Unknown,
-        Force32         = WGPURequestAdapterStatus_Force32,
     };
 
     enum class RequestDeviceStatus : uint32_t
@@ -200,7 +332,51 @@ namespace wgpu
 #endif
         Error           = WGPURequestDeviceStatus_Error,
         Unknown         = WGPURequestDeviceStatus_Unknown,
-        Force32         = WGPURequestDeviceStatus_Force32,
+    };
+
+    enum class SamplerBindingType : uint32_t
+    {
+        Undefined    = WGPUSamplerBindingType_Undefined,
+        Filtering    = WGPUSamplerBindingType_Filtering,
+        NonFiltering = WGPUSamplerBindingType_NonFiltering,
+        Comparison   = WGPUSamplerBindingType_Comparison,
+    };
+
+    enum class ShaderStageFlags : uint32_t
+    {
+        None     = WGPUShaderStage_None,
+        Vertex   = WGPUShaderStage_Vertex,
+        Fragment = WGPUShaderStage_Fragment,
+        Compute  = WGPUShaderStage_Compute,
+    };
+
+    ShaderStageFlags operator|(ShaderStageFlags lhs, ShaderStageFlags rhs);
+    ShaderStageFlags & operator|=(ShaderStageFlags& lhs, ShaderStageFlags rhs);
+    ShaderStageFlags operator&(ShaderStageFlags lhs, ShaderStageFlags rhs);
+    ShaderStageFlags & operator&=(ShaderStageFlags& lhs, ShaderStageFlags rhs);
+    bool operator==(ShaderStageFlags lhs, ShaderStageFlags rhs);
+
+    enum class StencilOperation : uint32_t
+    {
+#ifdef WEBGPU_BACKEND_DAWN
+        Undefined      = WGPUStencilOperation_Undefined,
+#endif
+        Keep           = WGPUStencilOperation_Keep,
+        Zero           = WGPUStencilOperation_Zero,
+        Replace        = WGPUStencilOperation_Replace,
+        Invert         = WGPUStencilOperation_Invert,
+        IncrementClamp = WGPUStencilOperation_IncrementClamp,
+        DecrementClamp = WGPUStencilOperation_DecrementClamp,
+        IncrementWrap  = WGPUStencilOperation_IncrementWrap,
+        DecrementWrap  = WGPUStencilOperation_DecrementWrap,
+    };
+
+    enum class StorageTextureAccess : uint32_t
+    {
+        Undefined = WGPUStorageTextureAccess_Undefined,
+        WriteOnly = WGPUStorageTextureAccess_WriteOnly,
+        ReadOnly  = WGPUStorageTextureAccess_ReadOnly,
+        ReadWrite = WGPUStorageTextureAccess_ReadWrite,
     };
 
     enum class StoreOp : uint32_t
@@ -208,7 +384,6 @@ namespace wgpu
         Undefined = WGPUStoreOp_Undefined,
         Store     = WGPUStoreOp_Store,
         Discard   = WGPUStoreOp_Discard,
-        Force32   = WGPUStoreOp_Force32,
     };
 
     enum class SType : uint32_t
@@ -293,10 +468,9 @@ namespace wgpu
         SharedTextureMemoryAHardwareBufferProperties       = WGPUSType_SharedTextureMemoryAHardwareBufferProperties,
         AHardwareBufferProperties                          = WGPUSType_AHardwareBufferProperties,
 #endif
-        Force32                                            = WGPUSType_Force32,
     };
 
-    enum class SurfaceGetCurrentTextureStatus
+    enum class SurfaceGetCurrentTextureStatus : uint32_t
     {
         Success     = WGPUSurfaceGetCurrentTextureStatus_Success,
         Timeout     = WGPUSurfaceGetCurrentTextureStatus_Timeout,
@@ -307,7 +481,6 @@ namespace wgpu
 #ifdef WEBGPU_BACKEND_DAWN
         Error       = WGPUSurfaceGetCurrentTextureStatus_Error,
 #endif
-        Force32     = WGPUSurfaceGetCurrentTextureStatus_Force32,
     };
 
     enum class TextureAspect : uint32_t
@@ -323,7 +496,6 @@ namespace wgpu
         Plane1Only  = WGPUTextureAspect_Plane1Only,
         Plane2Only  = WGPUTextureAspect_Plane2Only,
 #endif
-        Force32     = WGPUTextureAspect_Force32,
     };
 
     enum class TextureDimension : uint32_t
@@ -334,7 +506,6 @@ namespace wgpu
         _1D       = WGPUTextureDimension_1D,
         _2D       = WGPUTextureDimension_2D,
         _3D       = WGPUTextureDimension_3D,
-        Force32   = WGPUTextureDimension_Force32,
     };
 
     enum class TextureFormat : uint32_t
@@ -451,7 +622,16 @@ namespace wgpu
         R10X6BG10X6Biplanar444Unorm = WGPUTextureFormat_R10X6BG10X6Biplanar444Unorm,
         External                    = WGPUTextureFormat_External,
 #endif
-        Force32                     = WGPUTextureFormat_Force32,
+    };
+
+    enum class TextureSampleType : uint32_t
+    {
+        Undefined         = WGPUTextureSampleType_Undefined,
+        Float             = WGPUTextureSampleType_Float,
+        UnfilterableFloat = WGPUTextureSampleType_UnfilterableFloat,
+        Depth             = WGPUTextureSampleType_Depth,
+        Sint              = WGPUTextureSampleType_Sint,
+        Uint              = WGPUTextureSampleType_Uint,
     };
 
     enum class TextureUsageFlags : uint32_t
@@ -466,7 +646,6 @@ namespace wgpu
         TransientAttachment = WGPUTextureUsage_TransientAttachment,
         StorageAttachment   = WGPUTextureUsage_StorageAttachment,
 #endif
-        Force32             = WGPUTextureUsage_Force32,
     };
 
     enum class TextureViewDimension : uint32_t
@@ -478,7 +657,6 @@ namespace wgpu
         Cube      = WGPUTextureViewDimension_Cube,
         CubeArray = WGPUTextureViewDimension_CubeArray,
         _3D       = WGPUTextureViewDimension_3D,
-        Force32   = WGPUTextureViewDimension_Force32,
     };
 
     TextureUsageFlags operator|(TextureUsageFlags lhs, TextureUsageFlags rhs);
@@ -486,6 +664,54 @@ namespace wgpu
     TextureUsageFlags operator&(TextureUsageFlags lhs, TextureUsageFlags rhs);
     TextureUsageFlags & operator&=(TextureUsageFlags& lhs, TextureUsageFlags rhs);
     bool operator==(TextureUsageFlags lhs, TextureUsageFlags rhs);
+
+    enum class VertexFormat : uint32_t
+    {
+        Undefined       = WGPUVertexFormat_Undefined,
+        Uint8x2         = WGPUVertexFormat_Uint8x2,
+        Uint8x4         = WGPUVertexFormat_Uint8x4,
+        Sint8x2         = WGPUVertexFormat_Sint8x2,
+        Sint8x4         = WGPUVertexFormat_Sint8x4,
+        Unorm8x2        = WGPUVertexFormat_Unorm8x2,
+        Unorm8x4        = WGPUVertexFormat_Unorm8x4,
+        Snorm8x2        = WGPUVertexFormat_Snorm8x2,
+        Snorm8x4        = WGPUVertexFormat_Snorm8x4,
+        Uint16x2        = WGPUVertexFormat_Uint16x2,
+        Uint16x4        = WGPUVertexFormat_Uint16x4,
+        Sint16x2        = WGPUVertexFormat_Sint16x2,
+        Sint16x4        = WGPUVertexFormat_Sint16x4,
+        Unorm16x2       = WGPUVertexFormat_Unorm16x2,
+        Unorm16x4       = WGPUVertexFormat_Unorm16x4,
+        Snorm16x2       = WGPUVertexFormat_Snorm16x2,
+        Snorm16x4       = WGPUVertexFormat_Snorm16x4,
+        Float16x2       = WGPUVertexFormat_Float16x2,
+        Float16x4       = WGPUVertexFormat_Float16x4,
+        Float32         = WGPUVertexFormat_Float32,
+        Float32x2       = WGPUVertexFormat_Float32x2,
+        Float32x3       = WGPUVertexFormat_Float32x3,
+        Float32x4       = WGPUVertexFormat_Float32x4,
+        Uint32          = WGPUVertexFormat_Uint32,
+        Uint32x2        = WGPUVertexFormat_Uint32x2,
+        Uint32x3        = WGPUVertexFormat_Uint32x3,
+        Uint32x4        = WGPUVertexFormat_Uint32x4,
+        Sint32          = WGPUVertexFormat_Sint32,
+        Sint32x2        = WGPUVertexFormat_Sint32x2,
+        Sint32x3        = WGPUVertexFormat_Sint32x3,
+        Sint32x4        = WGPUVertexFormat_Sint32x4,
+#ifdef WEBGPU_BACKEND_DAWN
+        Unorm10_10_10_2 = WGPUVertexFormat_Unorm10_10_10_2,
+#endif
+    };
+
+    enum class VertexStepMode : uint32_t
+    {
+#ifdef WEBGPU_BACKEND_DAWN
+        Undefined = WGPUVertexStepMode_Undefined,
+#endif
+        VertexBufferNotUsed = WGPUVertexStepMode_VertexBufferNotUsed,
+        Vertex              = WGPUVertexStepMode_Vertex,
+        Instance            = WGPUVertexStepMode_Instance,
+    };
 
     // Callback Types
     using RequestAdapterCallback = std::function<void(RequestAdapterStatus status, const Adapter &adapter,
@@ -519,25 +745,21 @@ namespace wgpu
         WGPUAdapter m_handle{nullptr};
     };
 
-    class Device
+    class BindGroupLayout
     {
     public:
-        explicit Device(const WGPUDevice &handle);
-        ~Device();
+        explicit BindGroupLayout(const WGPUBindGroupLayout &handle);
+        ~BindGroupLayout();
 
-        Device(const Device &other);
-        Device(Device &&other) noexcept;
-        Device & operator=(const Device &other);
-        Device & operator=(Device &&other) noexcept;
+        BindGroupLayout(const BindGroupLayout &other);
+        BindGroupLayout(BindGroupLayout &&other) noexcept;
+        BindGroupLayout & operator=(const BindGroupLayout &other);
+        BindGroupLayout & operator=(BindGroupLayout &&other) noexcept;
 
-        [[nodiscard]] WGPUDevice c_ptr() const;
-
-        [[nodiscard]] CommandEncoder create_command_encoder(const CommandEncoderDescriptor &descriptor) const;
-        [[nodiscard]] Texture create_texture(const TextureDescriptor &descriptor) const;
-        [[nodiscard]] Queue get_queue() const;
+        [[nodiscard]] WGPUBindGroupLayout c_ptr() const;
 
     private:
-        WGPUDevice m_handle{nullptr};
+        WGPUBindGroupLayout m_handle{nullptr};
     };
 
     class CommandBuffer
@@ -577,6 +799,31 @@ namespace wgpu
         WGPUCommandEncoder m_handle{nullptr};
     };
 
+    class Device
+    {
+    public:
+        explicit Device(const WGPUDevice &handle);
+        ~Device();
+
+        Device(const Device &other);
+        Device(Device &&other) noexcept;
+        Device & operator=(const Device &other);
+        Device & operator=(Device &&other) noexcept;
+
+        [[nodiscard]] WGPUDevice c_ptr() const;
+
+        [[nodiscard]] BindGroupLayout create_bind_group_layout(const BindGroupLayoutDescriptor &descriptor) const;
+        [[nodiscard]] CommandEncoder create_command_encoder(const CommandEncoderDescriptor &descriptor) const;
+        [[nodiscard]] PipelineLayout create_pipeline_layout(const PipelineLayoutDescriptor &descriptor) const;
+        [[nodiscard]] RenderPipeline create_render_pipeline(const RenderPipelineDescriptor &descriptor) const;
+        [[nodiscard]] ShaderModule create_shader_module(const ShaderModuleDescriptor &descriptor) const;
+        [[nodiscard]] Texture create_texture(const TextureDescriptor &descriptor) const;
+        [[nodiscard]] Queue get_queue() const;
+
+    private:
+        WGPUDevice m_handle{nullptr};
+    };
+
     class Instance
     {
     public:
@@ -597,6 +844,23 @@ namespace wgpu
 
     private:
         WGPUInstance m_handle{nullptr};
+    };
+
+    class PipelineLayout
+    {
+    public:
+        explicit PipelineLayout(const WGPUPipelineLayout &handle);
+        ~PipelineLayout();
+
+        PipelineLayout(const PipelineLayout &other);
+        PipelineLayout(PipelineLayout &&other) noexcept;
+        PipelineLayout & operator=(const PipelineLayout &other);
+        PipelineLayout & operator=(PipelineLayout &&other) noexcept;
+
+        [[nodiscard]] WGPUPipelineLayout c_ptr() const;
+
+    private:
+        WGPUPipelineLayout m_handle{nullptr};
     };
 
     class Queue
@@ -631,10 +895,46 @@ namespace wgpu
 
         [[nodiscard]] WGPURenderPassEncoder c_ptr() const;
 
+        void draw(uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance) const;
         void end() const;
+        void set_pipeline(const RenderPipeline &pipeline) const;
 
     private:
         WGPURenderPassEncoder m_handle{nullptr};
+    };
+
+    class RenderPipeline
+    {
+    public:
+        explicit RenderPipeline(const WGPURenderPipeline &handle);
+        ~RenderPipeline();
+
+        RenderPipeline(const RenderPipeline &other);
+        RenderPipeline(RenderPipeline &&other) noexcept;
+        RenderPipeline & operator=(const RenderPipeline &other);
+        RenderPipeline & operator=(RenderPipeline &&other) noexcept;
+
+        [[nodiscard]] WGPURenderPipeline c_ptr() const;
+
+    private:
+        WGPURenderPipeline m_handle{nullptr};
+    };
+
+    class ShaderModule
+    {
+    public:
+        explicit ShaderModule(const WGPUShaderModule &handle);
+        ~ShaderModule();
+
+        ShaderModule(const ShaderModule &other);
+        ShaderModule(ShaderModule &&other) noexcept;
+        ShaderModule & operator=(const ShaderModule &other);
+        ShaderModule & operator=(ShaderModule &&other) noexcept;
+
+        [[nodiscard]] WGPUShaderModule c_ptr() const;
+
+    private:
+        WGPUShaderModule m_handle{nullptr};
     };
 
     class Surface
@@ -719,6 +1019,21 @@ namespace wgpu
         BackendType backend_type;
     };
 
+    struct BindGroupLayoutDescriptor
+    {
+        const ChainedStruct *next_in_chain;
+        std::string label;
+        std::vector<BindGroupLayoutEntry> entries;
+    };
+
+    struct BufferBindingLayout
+    {
+        const ChainedStruct *next_in_chain;
+        BufferBindingType type;
+        bool has_dynamic_offset;
+        uint64_t min_binding_size;
+    };
+
     struct ChainedStruct
     {
         const ChainedStruct *next_in_chain;
@@ -751,6 +1066,13 @@ namespace wgpu
         std::string label;
     };
 
+    struct ConstantEntry
+    {
+        const ChainedStruct *next_in_chain;
+        std::string key;
+        double value;
+    };
+
     struct QueueDescriptor
     {
         const ChainedStruct *next_in_chain;
@@ -771,6 +1093,15 @@ namespace wgpu
         uint32_t width;
         uint32_t height;
         uint32_t depth_or_array_layers;
+    };
+
+    struct FragmentState
+    {
+        const ChainedStruct *next_in_chain;
+        ShaderModule module;
+        std::optional<std::string> entry_point;
+        std::vector<ConstantEntry> constants;
+        std::vector<ColorTargetState> targets;
     };
 
 #ifdef WEBGPU_BACKEND_DAWN
@@ -824,6 +1155,30 @@ namespace wgpu
         uint32_t max_compute_workgroup_size_y;
         uint32_t max_compute_workgroup_size_z;
         uint32_t max_compute_workgroups_per_dimension;
+    };
+
+    struct MultisampleState
+    {
+        const ChainedStruct *next_in_chain;
+        uint32_t count;
+        uint32_t mask;
+        bool alpha_to_coverage_enabled;
+    };
+
+    struct PipelineLayoutDescriptor
+    {
+        const ChainedStruct *next_in_chain;
+        std::string label;
+        std::vector<BindGroupLayout> bind_group_layouts;
+    };
+
+    struct PrimitiveState
+    {
+        const ChainedStruct *next_in_chain;
+        PrimitiveTopology topology;
+        IndexFormat strip_index_format;
+        FrontFace front_face;
+        CullMode cull_mode;
     };
 
     struct RequestAdapterOptions
@@ -880,6 +1235,47 @@ namespace wgpu
         // TODO: RenderPassTimestampWrites
     };
 
+    struct SamplerBindingLayout
+    {
+        const ChainedStruct *next_in_chain;
+        SamplerBindingType type;
+    };
+
+    struct ShaderModuleDescriptor
+    {
+        const ChainedStruct *next_in_chain;
+        std::string label;
+    };
+
+    struct ShaderModuleSPIRVDescriptor
+    {
+        ChainedStruct chain;
+        uint32_t code_size;
+        const uint32_t *code;
+    };
+
+    struct ShaderModuleWGSLDescriptor
+    {
+        ChainedStruct chain;
+        const char *code;
+    };
+
+    struct StencilFaceState
+    {
+        CompareFunction compare;
+        StencilOperation fail_op;
+        StencilOperation depth_fail_op;
+        StencilOperation pass_op;
+    };
+
+    struct StorageTextureBindingLayout
+    {
+        const ChainedStruct *next_in_chain;
+        StorageTextureAccess access;
+        TextureFormat format;
+        TextureViewDimension view_dimension;
+    };
+
     struct SupportedLimits
     {
         ChainedStructOut *next_in_chain;
@@ -917,6 +1313,14 @@ namespace wgpu
         SurfaceGetCurrentTextureStatus status;
     };
 
+    struct TextureBindingLayout
+    {
+        const ChainedStruct *next_in_chain;
+        TextureSampleType sample_type;
+        TextureViewDimension view_dimension;
+        bool multisampled;
+    };
+
     struct TextureDescriptor
     {
         const ChainedStruct *next_in_chain;
@@ -941,6 +1345,88 @@ namespace wgpu
         uint32_t base_array_layer;
         uint32_t array_layer_count;
         TextureAspect aspect;
+    };
+
+    struct VertexAttribute
+    {
+        VertexFormat format;
+        uint64_t offset;
+        uint32_t shader_location;
+    };
+
+    struct VertexBufferLayout
+    {
+        uint64_t array_stride;
+        VertexStepMode step_mode;
+        std::vector<VertexAttribute> attributes;
+    };
+
+    struct VertexState
+    {
+        const ChainedStruct *next_in_chain;
+        ShaderModule module;
+        std::optional<std::string> entry_point;
+        std::vector<ConstantEntry> constants;
+        std::vector<VertexBufferLayout> buffers;
+    };
+
+    struct BindGroupLayoutEntry
+    {
+        const ChainedStruct *next_in_chain;
+        uint32_t binding;
+        ShaderStageFlags visibility;
+        BufferBindingLayout buffer;
+        SamplerBindingLayout sampler;
+        TextureBindingLayout texture;
+        StorageTextureBindingLayout storage_texture;
+    };
+
+    struct BlendComponent
+    {
+        BlendOperation operation;
+        BlendFactor src_factor;
+        BlendFactor dst_factor;
+    };
+
+    struct BlendState
+    {
+        BlendComponent color;
+        BlendComponent alpha;
+    };
+
+    struct ColorTargetState
+    {
+        const ChainedStruct *next_in_chain;
+        TextureFormat format;
+        std::optional<BlendState> blend;
+        ColorWriteMaskFlags write_mask;
+    };
+
+    struct DepthStencilState
+    {
+        const ChainedStruct *next_in_chain;
+        TextureFormat format;
+        bool depth_write_enabled;
+        CompareFunction depth_compare;
+        StencilFaceState stencil_front;
+        StencilFaceState stencil_back;
+        uint32_t stencil_read_mask;
+        uint32_t stencil_write_mask;
+        int32_t depth_bias;
+        float depth_bias_slope_scale;
+        float depth_bias_clamp;
+    };
+
+    struct RenderPipelineDescriptor
+    {
+        const ChainedStruct *next_in_chain;
+        std::string label;
+        std::optional<PipelineLayout> layout;
+        VertexState vertex;
+        PrimitiveState primitive;
+        std::optional<DepthStencilState> depth_stencil;
+        MultisampleState multisample;
+        std::optional<FragmentState> fragment;
     };
 
     // Non-member Functions

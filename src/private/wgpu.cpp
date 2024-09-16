@@ -4,6 +4,60 @@
 
 namespace wgpu
 {
+    ColorWriteMaskFlags operator|(const ColorWriteMaskFlags lhs, const ColorWriteMaskFlags rhs)
+    {
+        return static_cast<ColorWriteMaskFlags>(static_cast<uint32_t>(lhs) | static_cast<uint32_t>(rhs));
+    }
+
+    ColorWriteMaskFlags & operator|=(ColorWriteMaskFlags &lhs, const ColorWriteMaskFlags rhs)
+    {
+        lhs = lhs | rhs;
+        return lhs;
+    }
+
+    ColorWriteMaskFlags operator&(const ColorWriteMaskFlags lhs, const ColorWriteMaskFlags rhs)
+    {
+        return static_cast<ColorWriteMaskFlags>(static_cast<uint32_t>(lhs) & static_cast<uint32_t>(rhs));
+    }
+
+    ColorWriteMaskFlags & operator&=(ColorWriteMaskFlags& lhs, const ColorWriteMaskFlags rhs)
+    {
+        lhs = lhs & rhs;
+        return lhs;
+    }
+
+    bool operator==(const ColorWriteMaskFlags lhs, const ColorWriteMaskFlags rhs)
+    {
+        return static_cast<uint32_t>(lhs) == static_cast<uint32_t>(rhs);
+    }
+
+    ShaderStageFlags operator|(const ShaderStageFlags lhs, const ShaderStageFlags rhs)
+    {
+        return static_cast<ShaderStageFlags>(static_cast<uint32_t>(lhs) | static_cast<uint32_t>(rhs));
+    }
+
+    ShaderStageFlags & operator|=(ShaderStageFlags &lhs, const ShaderStageFlags rhs)
+    {
+        lhs = lhs | rhs;
+        return lhs;
+    }
+
+    ShaderStageFlags operator&(const ShaderStageFlags lhs, const ShaderStageFlags rhs)
+    {
+        return static_cast<ShaderStageFlags>(static_cast<uint32_t>(lhs) & static_cast<uint32_t>(rhs));
+    }
+
+    ShaderStageFlags & operator&=(ShaderStageFlags& lhs, const ShaderStageFlags rhs)
+    {
+        lhs = lhs & rhs;
+        return lhs;
+    }
+
+    bool operator==(const ShaderStageFlags lhs, const ShaderStageFlags rhs)
+    {
+        return static_cast<uint32_t>(lhs) == static_cast<uint32_t>(rhs);
+    }
+
     TextureUsageFlags operator|(const TextureUsageFlags lhs, const TextureUsageFlags rhs)
     {
         return static_cast<TextureUsageFlags>(static_cast<uint32_t>(lhs) | static_cast<uint32_t>(rhs));
@@ -225,6 +279,72 @@ namespace wgpu
         return handle;
     }
 
+    BindGroupLayout::BindGroupLayout(const WGPUBindGroupLayout &handle) : m_handle(handle)
+    {
+
+    }
+
+    BindGroupLayout::~BindGroupLayout()
+    {
+        if (m_handle != nullptr)
+        {
+            wgpuBindGroupLayoutRelease(m_handle);
+        }
+    }
+
+    BindGroupLayout::BindGroupLayout(const BindGroupLayout &other) : m_handle(other.m_handle)
+    {
+        if (m_handle != nullptr)
+        {
+#ifdef WEBGPU_BACKEND_WGPU
+            wgpuBindGroupLayoutReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+            wgpuBindGroupLayoutAddRef(m_handle);
+#endif
+        }
+    }
+
+    BindGroupLayout::BindGroupLayout(BindGroupLayout &&other) noexcept
+    {
+        std::swap(m_handle, other.m_handle);
+    }
+
+    BindGroupLayout & BindGroupLayout::operator=(const BindGroupLayout &other)
+    {
+        if (this != &other)
+        {
+            if (m_handle != nullptr)
+            {
+                wgpuBindGroupLayoutRelease(m_handle);
+            }
+
+            m_handle = other.m_handle;
+            if (m_handle != nullptr)
+            {
+#ifdef WEBGPU_BACKEND_WGPU
+            wgpuBindGroupLayoutReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+            wgpuBindGroupLayoutAddRef(m_handle);
+#endif
+            }
+        }
+        return *this;
+    }
+
+    BindGroupLayout & BindGroupLayout::operator=(BindGroupLayout &&other) noexcept
+    {
+        if (this != &other)
+        {
+            std::swap(m_handle, other.m_handle);
+        }
+        return *this;
+    }
+
+    WGPUBindGroupLayout BindGroupLayout::c_ptr() const
+    {
+        return m_handle;
+    }
+
     CommandBuffer::CommandBuffer(const WGPUCommandBuffer &handle) : m_handle(handle)
     {
 
@@ -363,7 +483,8 @@ namespace wgpu
         wgpu_color_attachments.reserve(descriptor.color_attachments.size());
         for (const auto &color_attachment : descriptor.color_attachments)
         {
-            wgpu_color_attachments.push_back({
+            wgpu_color_attachments.push_back(
+            {
                 .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(color_attachment.next_in_chain),
                 .view = color_attachment.view ? color_attachment.view->c_ptr() : nullptr,
 #ifdef WEBGPU_BACKEND_DAWN
@@ -379,7 +500,8 @@ namespace wgpu
         WGPURenderPassDepthStencilAttachment wgpu_depth_stencil_attachment{};
         if (descriptor.depth_stencil_attachment)
         {
-            wgpu_depth_stencil_attachment = {
+            wgpu_depth_stencil_attachment = WGPURenderPassDepthStencilAttachment
+            {
                 .view = descriptor.depth_stencil_attachment->view.c_ptr(),
                 .depthLoadOp = static_cast<WGPULoadOp>(descriptor.depth_stencil_attachment->depth_load_op),
                 .depthStoreOp = static_cast<WGPUStoreOp>(descriptor.depth_stencil_attachment->depth_store_op),
@@ -482,14 +604,271 @@ namespace wgpu
         return m_handle;
     }
 
+    BindGroupLayout Device::create_bind_group_layout(const BindGroupLayoutDescriptor &descriptor) const
+    {
+        std::vector<WGPUBindGroupLayoutEntry> wgpu_entries;
+        wgpu_entries.reserve(descriptor.entries.size());
+        for (const BindGroupLayoutEntry &entry : descriptor.entries)
+        {
+            wgpu_entries.push_back(WGPUBindGroupLayoutEntry
+            {
+                .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(entry.next_in_chain),
+                .binding = entry.binding,
+                .visibility = static_cast<WGPUShaderStageFlags>(entry.visibility),
+                .buffer = WGPUBufferBindingLayout
+                {
+                    .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(entry.buffer.next_in_chain),
+                    .type = static_cast<WGPUBufferBindingType>(entry.buffer.type),
+                    .hasDynamicOffset = entry.buffer.has_dynamic_offset,
+                    .minBindingSize = entry.buffer.min_binding_size,
+                },
+                .sampler = WGPUSamplerBindingLayout
+                {
+                    .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(entry.sampler.next_in_chain),
+                    .type = static_cast<WGPUSamplerBindingType>(entry.sampler.type),
+                },
+                .texture = WGPUTextureBindingLayout
+                {
+                    .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(entry.texture.next_in_chain),
+                    .sampleType = static_cast<WGPUTextureSampleType>(entry.texture.sample_type),
+                    .viewDimension = static_cast<WGPUTextureViewDimension>(entry.texture.view_dimension),
+                    .multisampled = entry.texture.multisampled,
+                },
+                .storageTexture = WGPUStorageTextureBindingLayout
+                {
+                    .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(entry.storage_texture.next_in_chain),
+                    .access = static_cast<WGPUStorageTextureAccess>(entry.storage_texture.access),
+                    .format = static_cast<WGPUTextureFormat>(entry.storage_texture.format),
+                    .viewDimension = static_cast<WGPUTextureViewDimension>(entry.storage_texture.view_dimension),
+                },
+            });
+        }
+
+        const WGPUBindGroupLayoutDescriptor wgpu_descriptor
+        {
+            .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(descriptor.next_in_chain),
+            .label = descriptor.label.c_str(),
+            .entryCount = wgpu_entries.size(),
+            .entries = wgpu_entries.data(),
+        };
+
+        return BindGroupLayout{wgpuDeviceCreateBindGroupLayout(m_handle, &wgpu_descriptor)};
+    }
+
     CommandEncoder Device::create_command_encoder(const CommandEncoderDescriptor &descriptor) const
     {
-        const WGPUCommandEncoderDescriptor wgpu_descriptor = {
+        const WGPUCommandEncoderDescriptor wgpu_descriptor
+        {
             .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(descriptor.next_in_chain),
             .label = descriptor.label.c_str(),
         };
 
         return CommandEncoder{wgpuDeviceCreateCommandEncoder(m_handle, &wgpu_descriptor)};
+    }
+
+    PipelineLayout Device::create_pipeline_layout(const PipelineLayoutDescriptor &descriptor) const
+    {
+        std::vector<WGPUBindGroupLayout> wgpu_bind_group_layouts;
+        wgpu_bind_group_layouts.reserve(descriptor.bind_group_layouts.size());
+        for (const auto &bind_group_layout : descriptor.bind_group_layouts)
+        {
+            wgpu_bind_group_layouts.push_back(bind_group_layout.c_ptr());
+        }
+
+        const WGPUPipelineLayoutDescriptor wgpu_descriptor
+        {
+            .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(descriptor.next_in_chain),
+            .label = descriptor.label.c_str(),
+            .bindGroupLayoutCount = wgpu_bind_group_layouts.size(),
+            .bindGroupLayouts = wgpu_bind_group_layouts.data(),
+        };
+
+        return PipelineLayout{wgpuDeviceCreatePipelineLayout(m_handle, &wgpu_descriptor)};
+    }
+
+    RenderPipeline Device::create_render_pipeline(const RenderPipelineDescriptor &descriptor) const
+    {
+        std::vector<WGPUConstantEntry> wgpu_vertex_constants;
+        wgpu_vertex_constants.reserve(descriptor.vertex.constants.size());
+        for (const auto &constant : descriptor.vertex.constants)
+        {
+            wgpu_vertex_constants.push_back({
+                .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(constant.next_in_chain),
+                .key = constant.key.c_str(),
+                .value = constant.value,
+            });
+        }
+
+        std::vector<WGPUVertexBufferLayout> wgpu_vertex_buffers;
+        wgpu_vertex_buffers.reserve(descriptor.vertex.buffers.size());
+        std::vector<std::vector<WGPUVertexAttribute>> wgpu_vertex_buffers_attributes(descriptor.vertex.buffers.size());
+        for (auto i = 0; i < descriptor.vertex.buffers.size(); ++i)
+        {
+            const auto &buffer = descriptor.vertex.buffers[i];
+            auto &wgpu_vertex_buffer_attributes = wgpu_vertex_buffers_attributes[i];
+
+            wgpu_vertex_buffer_attributes.reserve(buffer.attributes.size());
+            for (const auto &attribute : buffer.attributes)
+            {
+                wgpu_vertex_buffer_attributes.push_back(
+                {
+                    .format = static_cast<WGPUVertexFormat>(attribute.format),
+                    .offset = attribute.offset,
+                    .shaderLocation = attribute.shader_location,
+                });
+            }
+
+            wgpu_vertex_buffers.push_back(
+            {
+                .arrayStride = buffer.array_stride,
+                .stepMode = static_cast<WGPUVertexStepMode>(buffer.step_mode),
+                .attributeCount = wgpu_vertex_buffer_attributes.size(),
+                .attributes = wgpu_vertex_buffer_attributes.data(),
+            });
+        }
+
+        std::optional<WGPUDepthStencilState> wgpu_depth_stencil;
+        if (descriptor.depth_stencil)
+        {
+            wgpu_depth_stencil = WGPUDepthStencilState
+            {
+                .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(descriptor.depth_stencil->next_in_chain),
+                .format = static_cast<WGPUTextureFormat>(descriptor.depth_stencil->format),
+                .depthWriteEnabled = descriptor.depth_stencil->depth_write_enabled,
+                .depthCompare = static_cast<WGPUCompareFunction>(descriptor.depth_stencil->depth_compare),
+                .stencilFront = WGPUStencilFaceState
+                {
+                    .compare = static_cast<WGPUCompareFunction>(descriptor.depth_stencil->stencil_front.compare),
+                    .failOp = static_cast<WGPUStencilOperation>(descriptor.depth_stencil->stencil_front.fail_op),
+                    .depthFailOp = static_cast<WGPUStencilOperation>(descriptor.depth_stencil->stencil_front.depth_fail_op),
+                    .passOp = static_cast<WGPUStencilOperation>(descriptor.depth_stencil->stencil_front.pass_op),
+                },
+                .stencilBack = WGPUStencilFaceState
+                {
+                    .compare = static_cast<WGPUCompareFunction>(descriptor.depth_stencil->stencil_back.compare),
+                    .failOp = static_cast<WGPUStencilOperation>(descriptor.depth_stencil->stencil_back.fail_op),
+                    .depthFailOp = static_cast<WGPUStencilOperation>(descriptor.depth_stencil->stencil_back.depth_fail_op),
+                    .passOp = static_cast<WGPUStencilOperation>(descriptor.depth_stencil->stencil_back.pass_op),
+                },
+                .stencilReadMask = descriptor.depth_stencil->stencil_read_mask,
+                .stencilWriteMask = descriptor.depth_stencil->stencil_write_mask,
+                .depthBias = descriptor.depth_stencil->depth_bias,
+                .depthBiasSlopeScale = descriptor.depth_stencil->depth_bias_slope_scale,
+                .depthBiasClamp = descriptor.depth_stencil->depth_bias_clamp,
+            };
+        }
+
+        // We need to keep all of these in scope until the end of the function.
+        std::optional<WGPUFragmentState> wgpu_fragment;
+        std::vector<WGPUConstantEntry> wgpu_fragment_constants;
+        std::vector<WGPUColorTargetState> wgpu_fragment_targets;
+        std::optional<WGPUBlendState> wgpu_fragment_target_blend;
+        if (descriptor.fragment)
+        {
+            wgpu_fragment_constants.reserve(descriptor.fragment->constants.size());
+            for (const auto &constant : descriptor.fragment->constants)
+            {
+                wgpu_fragment_constants.push_back(
+                {
+                    .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(constant.next_in_chain),
+                    .key = constant.key.c_str(),
+                    .value = constant.value,
+                });
+            }
+
+            wgpu_fragment_targets.reserve(descriptor.fragment->targets.size());
+            for (const auto &target : descriptor.fragment->targets)
+            {
+                if (target.blend)
+                {
+                    wgpu_fragment_target_blend = WGPUBlendState
+                    {
+                        .color = WGPUBlendComponent
+                        {
+                            .operation = static_cast<WGPUBlendOperation>(target.blend->color.operation),
+                            .srcFactor = static_cast<WGPUBlendFactor>(target.blend->color.src_factor),
+                            .dstFactor = static_cast<WGPUBlendFactor>(target.blend->color.dst_factor),
+                        },
+                        .alpha = WGPUBlendComponent
+                        {
+                            .operation = static_cast<WGPUBlendOperation>(target.blend->alpha.operation),
+                            .srcFactor = static_cast<WGPUBlendFactor>(target.blend->alpha.src_factor),
+                            .dstFactor = static_cast<WGPUBlendFactor>(target.blend->alpha.dst_factor),
+                        }
+                    };
+                }
+
+                wgpu_fragment_targets.push_back(
+                {
+                    .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(target.next_in_chain),
+                    .format = static_cast<WGPUTextureFormat>(target.format),
+                    .blend = wgpu_fragment_target_blend ? &wgpu_fragment_target_blend.value() : nullptr,
+                    .writeMask = static_cast<WGPUColorWriteMaskFlags>(target.write_mask),
+                });
+            }
+
+            wgpu_fragment = WGPUFragmentState
+            {
+                .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(descriptor.fragment->next_in_chain),
+                .module = descriptor.fragment->module.c_ptr(),
+                .entryPoint = descriptor.fragment->entry_point ? descriptor.fragment->entry_point->c_str() : nullptr,
+                .constantCount = wgpu_fragment_constants.size(),
+                .constants = wgpu_fragment_constants.data(),
+                .targetCount = wgpu_fragment_targets.size(),
+                .targets = wgpu_fragment_targets.data(),
+            };
+        }
+
+        const WGPURenderPipelineDescriptor wgpu_descriptor
+        {
+            .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(descriptor.next_in_chain),
+            .label = descriptor.label.c_str(),
+            .layout = descriptor.layout ? descriptor.layout->c_ptr() : nullptr,
+            .vertex = WGPUVertexState
+            {
+                .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(descriptor.vertex.next_in_chain),
+                .module = descriptor.vertex.module.c_ptr(),
+                .entryPoint = descriptor.vertex.entry_point ? descriptor.vertex.entry_point->c_str() : nullptr,
+                .constantCount = wgpu_vertex_constants.size(),
+                .constants = wgpu_vertex_constants.data(),
+                .bufferCount = wgpu_vertex_buffers.size(),
+                .buffers = wgpu_vertex_buffers.data(),
+            },
+            .primitive = WGPUPrimitiveState
+            {
+                .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(descriptor.primitive.next_in_chain),
+                .topology = static_cast<WGPUPrimitiveTopology>(descriptor.primitive.topology),
+                .stripIndexFormat = static_cast<WGPUIndexFormat>(descriptor.primitive.strip_index_format),
+                .frontFace = static_cast<WGPUFrontFace>(descriptor.primitive.front_face),
+                .cullMode = static_cast<WGPUCullMode>(descriptor.primitive.cull_mode),
+            },
+            .depthStencil = wgpu_depth_stencil ? &wgpu_depth_stencil.value() : nullptr,
+            .multisample = WGPUMultisampleState
+            {
+                .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(descriptor.multisample.next_in_chain),
+                .count = descriptor.multisample.count,
+                .mask = descriptor.multisample.mask,
+                .alphaToCoverageEnabled = descriptor.multisample.alpha_to_coverage_enabled,
+            },
+            .fragment = wgpu_fragment ? &wgpu_fragment.value() : nullptr,
+        };
+
+        return RenderPipeline{wgpuDeviceCreateRenderPipeline(m_handle, &wgpu_descriptor)};
+    }
+
+    ShaderModule Device::create_shader_module(const ShaderModuleDescriptor &descriptor) const
+    {
+        const WGPUShaderModuleDescriptor wgpu_descriptor
+        {
+            .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(descriptor.next_in_chain),
+            .label = descriptor.label.c_str(),
+#ifdef WEBGPU_BACKEND_WGPU
+            .hintCount = 0,
+            .hints = nullptr,
+#endif
+        };
+
+        return ShaderModule{wgpuDeviceCreateShaderModule(m_handle, &wgpu_descriptor)};
     }
 
     Texture Device::create_texture(const TextureDescriptor &descriptor) const
@@ -500,7 +879,8 @@ namespace wgpu
             .label = descriptor.label.c_str(),
             .usage = static_cast<WGPUTextureUsageFlags>(descriptor.usage),
             .dimension = static_cast<WGPUTextureDimension>(descriptor.dimension),
-            .size = {
+            .size = WGPUExtent3D
+            {
                 .width = descriptor.size.width,
                 .height = descriptor.size.height,
                 .depthOrArrayLayers = descriptor.size.depth_or_array_layers,
@@ -628,7 +1008,8 @@ namespace wgpu
             callback(static_cast<RequestAdapterStatus>(status), Adapter{adapter}, message ? message : "");
         };
 
-        const WGPURequestAdapterOptions wgpu_options = {
+        const WGPURequestAdapterOptions wgpu_options
+        {
             .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(options.next_in_chain),
             .compatibleSurface = options.compatible_surface ? options.compatible_surface->c_ptr() : nullptr,
             .powerPreference = static_cast<WGPUPowerPreference>(options.power_preference),
@@ -641,6 +1022,71 @@ namespace wgpu
 
         wgpuInstanceRequestAdapter(m_handle, &wgpu_options, on_request_ended, handle.get());
         return handle;
+    }
+
+    PipelineLayout::PipelineLayout(const WGPUPipelineLayout &handle) : m_handle(handle)
+    {
+
+    }
+
+    PipelineLayout::~PipelineLayout()
+    {
+        if (m_handle != nullptr)
+        {
+            wgpuPipelineLayoutRelease(m_handle);
+        }
+    }
+
+    PipelineLayout::PipelineLayout(const PipelineLayout &other) : m_handle(other.m_handle)
+    {
+        if (m_handle != nullptr)
+        {
+#ifdef WEBGPU_BACKEND_WGPU
+            wgpuPipelineLayoutReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+            wgpuPipelineLayoutAddRef(m_handle);
+#endif
+        }
+    }
+
+    PipelineLayout::PipelineLayout(PipelineLayout &&other) noexcept
+    {
+        std::swap(m_handle, other.m_handle);
+    }
+
+    PipelineLayout& PipelineLayout::operator=(const PipelineLayout &other)
+    {
+        if (this != &other)
+        {
+            if (m_handle != nullptr)
+            {
+                wgpuPipelineLayoutRelease(m_handle);
+            }
+
+            if (m_handle != nullptr)
+            {
+#ifdef WEBGPU_BACKEND_WGPU
+                wgpuPipelineLayoutReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+                wgpuPipelineLayoutAddRef(m_handle);
+#endif
+            }
+        }
+        return *this;
+    }
+
+    PipelineLayout& PipelineLayout::operator=(PipelineLayout &&other) noexcept
+    {
+        if (this != &other)
+        {
+            std::swap(m_handle, other.m_handle);
+        }
+        return *this;
+    }
+
+    WGPUPipelineLayout PipelineLayout::c_ptr() const
+    {
+        return m_handle;
     }
 
     Queue::Queue(const WGPUQueue &handle) : m_handle(handle)
@@ -785,9 +1231,151 @@ namespace wgpu
         return m_handle;
     }
 
+    void RenderPassEncoder::draw(const uint32_t vertex_count, const uint32_t instance_count,
+        const uint32_t first_vertex, const uint32_t first_instance) const
+    {
+        wgpuRenderPassEncoderDraw(m_handle, vertex_count, instance_count, first_vertex, first_instance);
+    }
+
     void RenderPassEncoder::end() const
     {
         wgpuRenderPassEncoderEnd(m_handle);
+    }
+
+    void RenderPassEncoder::set_pipeline(const RenderPipeline &pipeline) const
+    {
+        wgpuRenderPassEncoderSetPipeline(m_handle, pipeline.c_ptr());
+    }
+
+    RenderPipeline::RenderPipeline(const WGPURenderPipeline &handle) : m_handle(handle)
+    {
+
+    }
+
+    RenderPipeline::~RenderPipeline()
+    {
+        if (m_handle != nullptr)
+        {
+            wgpuRenderPipelineRelease(m_handle);
+        }
+    }
+
+    RenderPipeline::RenderPipeline(const RenderPipeline &other) : m_handle(other.m_handle)
+    {
+        if (m_handle != nullptr)
+        {
+#ifdef WEBGPU_BACKEND_WGPU
+            wgpuRenderPipelineReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+            wgpuRenderPipelineAddRef(m_handle);
+#endif
+        }
+    }
+
+    RenderPipeline::RenderPipeline(RenderPipeline &&other) noexcept
+    {
+        std::swap(m_handle, other.m_handle);
+    }
+
+    RenderPipeline& RenderPipeline::operator=(const RenderPipeline &other)
+    {
+        if (this != &other)
+        {
+            if (m_handle != nullptr)
+            {
+                wgpuRenderPipelineRelease(m_handle);
+            }
+
+            if (m_handle != nullptr)
+            {
+#ifdef WEBGPU_BACKEND_WGPU
+                wgpuRenderPipelineReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+                wgpuRenderPipelineAddRef(m_handle);
+#endif
+            }
+        }
+        return *this;
+    }
+
+    RenderPipeline& RenderPipeline::operator=(RenderPipeline &&other) noexcept
+    {
+        if (this != &other)
+        {
+            std::swap(m_handle, other.m_handle);
+        }
+        return *this;
+    }
+
+    WGPURenderPipeline RenderPipeline::c_ptr() const
+    {
+        return m_handle;
+    }
+
+    ShaderModule::ShaderModule(const WGPUShaderModule &handle) : m_handle(handle)
+    {
+
+    }
+
+    ShaderModule::~ShaderModule()
+    {
+        if (m_handle != nullptr)
+        {
+            wgpuShaderModuleRelease(m_handle);
+        }
+    }
+
+    ShaderModule::ShaderModule(const ShaderModule &other) : m_handle(other.m_handle)
+    {
+        if (m_handle != nullptr)
+        {
+#ifdef WEBGPU_BACKEND_WGPU
+            wgpuShaderModuleReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+            wgpuShaderModuleAddRef(m_handle);
+#endif
+        }
+    }
+
+    ShaderModule::ShaderModule(ShaderModule &&other) noexcept
+    {
+        std::swap(m_handle, other.m_handle);
+    }
+
+    ShaderModule& ShaderModule::operator=(const ShaderModule &other)
+    {
+        if (this != &other)
+        {
+            if (m_handle != nullptr)
+            {
+                wgpuShaderModuleRelease(m_handle);
+            }
+
+            m_handle = other.m_handle;
+            if (m_handle != nullptr)
+            {
+#ifdef WEBGPU_BACKEND_WGPU
+            wgpuShaderModuleReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+            wgpuShaderModuleAddRef(m_handle);
+#endif
+            }
+        }
+        return *this;
+    }
+
+    ShaderModule& ShaderModule::operator=(ShaderModule &&other) noexcept
+    {
+        if (this != &other)
+        {
+            std::swap(m_handle, other.m_handle);
+        }
+        return *this;
+    }
+
+    WGPUShaderModule ShaderModule::c_ptr() const
+    {
+        return m_handle;
     }
 
     Surface::Surface(const WGPUSurface &handle) : m_handle(handle)
@@ -858,7 +1446,8 @@ namespace wgpu
 
     void Surface::configure(const SurfaceConfiguration &configuration) const
     {
-        const WGPUSurfaceConfiguration wgpu_configuration = {
+        const WGPUSurfaceConfiguration wgpu_configuration
+        {
             .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(configuration.next_in_chain),
             .device = configuration.device.c_ptr(),
             .format = static_cast<WGPUTextureFormat>(configuration.format),
@@ -870,6 +1459,7 @@ namespace wgpu
             .height = configuration.height,
             .presentMode = static_cast<WGPUPresentMode>(configuration.present_mode),
         };
+
         wgpuSurfaceConfigure(m_handle, &wgpu_configuration);
     }
 
@@ -880,20 +1470,24 @@ namespace wgpu
         // However, it only returns WGPUStatus_Error for some reason during testing.
         wgpuSurfaceGetCapabilities(m_handle, adapter.c_ptr(), &wgpu_capabilities);
 
-        return SurfaceCapabilities{
+        return SurfaceCapabilities
+        {
             .next_in_chain = reinterpret_cast<ChainedStructOut *>(wgpu_capabilities.nextInChain),
 #ifdef WEBGPU_BACKEND_DAWN
             .usages = static_cast<TextureUsageFlags>(wgpu_capabilities.usages),
 #endif
-            .formats = {
+            .formats = std::vector<TextureFormat>
+            {
                 reinterpret_cast<const TextureFormat *>(wgpu_capabilities.formats),
                 reinterpret_cast<const TextureFormat *>(wgpu_capabilities.formats) + wgpu_capabilities.formatCount
             },
-            .present_modes = {
+            .present_modes = std::vector<PresentMode>
+            {
                 reinterpret_cast<const PresentMode *>(wgpu_capabilities.presentModes),
                 reinterpret_cast<const PresentMode *>(wgpu_capabilities.presentModes) + wgpu_capabilities.presentModeCount
             },
-            .alpha_modes = {
+            .alpha_modes = std::vector<CompositeAlphaMode>
+            {
                 reinterpret_cast<const CompositeAlphaMode *>(wgpu_capabilities.alphaModes),
                 reinterpret_cast<const CompositeAlphaMode *>(wgpu_capabilities.alphaModes) + wgpu_capabilities.alphaModeCount
             },
@@ -905,7 +1499,8 @@ namespace wgpu
         WGPUSurfaceTexture wgpu_surface_texture{};
         wgpuSurfaceGetCurrentTexture(m_handle, &wgpu_surface_texture);
 
-        return {
+        return SurfaceTexture
+        {
             .texture = Texture{wgpu_surface_texture.texture},
             .suboptimal = static_cast<bool>(wgpu_surface_texture.suboptimal),
             .status = static_cast<SurfaceGetCurrentTextureStatus>(wgpu_surface_texture.status),
@@ -995,7 +1590,8 @@ namespace wgpu
 
     TextureView Texture::create_view(const TextureViewDescriptor &descriptor) const
     {
-        const WGPUTextureViewDescriptor wgpu_descriptor = {
+        const WGPUTextureViewDescriptor wgpu_descriptor
+        {
             .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(descriptor.next_in_chain),
             .label = descriptor.label.c_str(),
             .format = static_cast<WGPUTextureFormat>(descriptor.format),
