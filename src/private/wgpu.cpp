@@ -4,6 +4,33 @@
 
 namespace wgpu
 {
+    BufferUsageFlags operator|(const BufferUsageFlags lhs, const BufferUsageFlags rhs)
+    {
+        return static_cast<BufferUsageFlags>(static_cast<uint32_t>(lhs) | static_cast<uint32_t>(rhs));
+    }
+
+    BufferUsageFlags & operator|=(BufferUsageFlags &lhs, const BufferUsageFlags rhs)
+    {
+        lhs = lhs | rhs;
+        return lhs;
+    }
+
+    BufferUsageFlags operator&(const BufferUsageFlags lhs, const BufferUsageFlags rhs)
+    {
+        return static_cast<BufferUsageFlags>(static_cast<uint32_t>(lhs) & static_cast<uint32_t>(rhs));
+    }
+
+    BufferUsageFlags & operator&=(BufferUsageFlags& lhs, const BufferUsageFlags rhs)
+    {
+        lhs = lhs & rhs;
+        return lhs;
+    }
+
+    bool operator==(const BufferUsageFlags lhs, const BufferUsageFlags rhs)
+    {
+        return static_cast<uint32_t>(lhs) == static_cast<uint32_t>(rhs);
+    }
+
     ColorWriteMaskFlags operator|(const ColorWriteMaskFlags lhs, const ColorWriteMaskFlags rhs)
     {
         return static_cast<ColorWriteMaskFlags>(static_cast<uint32_t>(lhs) | static_cast<uint32_t>(rhs));
@@ -27,6 +54,33 @@ namespace wgpu
     }
 
     bool operator==(const ColorWriteMaskFlags lhs, const ColorWriteMaskFlags rhs)
+    {
+        return static_cast<uint32_t>(lhs) == static_cast<uint32_t>(rhs);
+    }
+
+    MapModeFlags operator|(const MapModeFlags lhs, const MapModeFlags rhs)
+    {
+        return static_cast<MapModeFlags>(static_cast<uint32_t>(lhs) | static_cast<uint32_t>(rhs));
+    }
+
+    MapModeFlags & operator|=(MapModeFlags &lhs, const MapModeFlags rhs)
+    {
+        lhs = lhs | rhs;
+        return lhs;
+    }
+
+    MapModeFlags operator&(const MapModeFlags lhs, const MapModeFlags rhs)
+    {
+        return static_cast<MapModeFlags>(static_cast<uint32_t>(lhs) & static_cast<uint32_t>(rhs));
+    }
+
+    MapModeFlags & operator&=(MapModeFlags& lhs, const MapModeFlags rhs)
+    {
+        lhs = lhs & rhs;
+        return lhs;
+    }
+
+    bool operator==(const MapModeFlags lhs, const MapModeFlags rhs)
     {
         return static_cast<uint32_t>(lhs) == static_cast<uint32_t>(rhs);
     }
@@ -345,6 +399,99 @@ namespace wgpu
         return m_handle;
     }
 
+    Buffer::Buffer(const WGPUBuffer &handle) : m_handle(handle)
+
+    {
+
+    }
+
+    Buffer::~Buffer()
+    {
+        if (m_handle != nullptr)
+        {
+            wgpuBufferRelease(m_handle);
+        }
+    }
+
+    Buffer::Buffer(const Buffer &other) : m_handle(other.m_handle)
+    {
+        if (m_handle != nullptr)
+        {
+#ifdef WEBGPU_BACKEND_WGPU
+            wgpuBufferReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+            wgpuBufferAddRef(m_handle);
+#endif
+        }
+    }
+
+    Buffer::Buffer(Buffer &&other) noexcept
+    {
+        std::swap(m_handle, other.m_handle);
+    }
+
+    Buffer & Buffer::operator=(const Buffer &other)
+    {
+        if (this != &other)
+        {
+            if (m_handle != nullptr)
+            {
+                wgpuBufferRelease(m_handle);
+            }
+
+            m_handle = other.m_handle;
+            if (m_handle != nullptr)
+            {
+#ifdef WEBGPU_BACKEND_WGPU
+            wgpuBufferReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+            wgpuBufferAddRef(m_handle);
+#endif
+            }
+        }
+        return *this;
+    }
+
+    Buffer & Buffer::operator=(Buffer &&other) noexcept
+    {
+        if (this != &other)
+        {
+            std::swap(m_handle, other.m_handle);
+        }
+        return *this;
+    }
+
+    WGPUBuffer Buffer::c_ptr() const
+    {
+        return m_handle;
+    }
+
+    const void * Buffer::get_const_mapped_range(const size_t offset, const size_t size) const
+    {
+        return wgpuBufferGetConstMappedRange(m_handle, offset, size);
+    }
+
+    std::unique_ptr<MapBufferCallback> Buffer::map_async(const MapModeFlags mode, const size_t offset,
+        const size_t size, MapBufferCallback &&callback) const
+    {
+        auto handle = std::make_unique<MapBufferCallback>(callback);
+
+        static auto on_buffer_mapped = [](const WGPUBufferMapAsyncStatus status, void *user_data) -> void
+        {
+            const MapBufferCallback& callback = *static_cast<MapBufferCallback*>(user_data);
+            callback(static_cast<BufferMapAsyncStatus>(status));
+        };
+
+        wgpuBufferMapAsync(m_handle, static_cast<WGPUMapModeFlags>(mode), offset, size, on_buffer_mapped, handle.get());
+
+        return handle;
+    }
+
+    void Buffer::unmap() const
+    {
+        wgpuBufferUnmap(m_handle);
+    }
+
     CommandBuffer::CommandBuffer(const WGPUCommandBuffer &handle) : m_handle(handle)
     {
 
@@ -527,6 +674,18 @@ namespace wgpu
         return RenderPassEncoder{wgpuCommandEncoderBeginRenderPass(m_handle, &wgpu_descriptor)};
     }
 
+    void CommandEncoder::copy_buffer_to_buffer(const Buffer &source, const uint64_t source_offset,
+        const Buffer &destination, const uint64_t destination_offset, const uint64_t size) const
+    {
+        wgpuCommandEncoderCopyBufferToBuffer(
+            m_handle,
+            source.c_ptr(), source_offset,
+            destination.c_ptr(), destination_offset,
+            size
+        );
+    }
+
+
     CommandBuffer CommandEncoder::finish(const CommandBufferDescriptor &descriptor) const
     {
         const WGPUCommandBufferDescriptor wgpu_descriptor
@@ -653,6 +812,20 @@ namespace wgpu
         };
 
         return BindGroupLayout{wgpuDeviceCreateBindGroupLayout(m_handle, &wgpu_descriptor)};
+    }
+
+    Buffer Device::create_buffer(const BufferDescriptor &descriptor) const
+    {
+        const WGPUBufferDescriptor wgpu_descriptor
+        {
+            .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(descriptor.next_in_chain),
+            .label = descriptor.label.c_str(),
+            .usage = static_cast<WGPUBufferUsageFlags>(descriptor.usage),
+            .size = descriptor.size,
+            .mappedAtCreation = descriptor.mapped_at_creation,
+        };
+
+        return Buffer{wgpuDeviceCreateBuffer(m_handle, &wgpu_descriptor)};
     }
 
     CommandEncoder Device::create_command_encoder(const CommandEncoderDescriptor &descriptor) const
@@ -898,6 +1071,13 @@ namespace wgpu
     Queue Device::get_queue() const
     {
         return Queue{wgpuDeviceGetQueue(m_handle)};
+    }
+
+    void Device::tick() const
+    {
+#ifdef WEBGPU_BACKEND_DAWN
+        wgpuDeviceTick(m_handle);
+#endif
     }
 
     Instance::Instance(const WGPUInstance &handle) : m_handle(handle)

@@ -12,6 +12,7 @@ namespace wgpu
     // RAII Handle Forward Declarations
     class Adapter;
     class BindGroupLayout;
+    class Buffer;
     class CommandBuffer;
     class CommandEncoder;
     class Device;
@@ -31,6 +32,7 @@ namespace wgpu
     struct BlendComponent;
     struct BlendState;
     struct BufferBindingLayout;
+    struct BufferDescriptor;
     struct ChainedStruct;
     struct ChainedStructOut;
     struct Color;
@@ -62,7 +64,6 @@ namespace wgpu
     struct StencilFaceState;
     struct StorageTextureBindingLayout;
     struct SupportedLimits;
-    struct SurfaceLimits;
     struct SurfaceCapabilities;
     struct SurfaceConfiguration;
     struct SurfaceTexture;
@@ -140,6 +141,43 @@ namespace wgpu
         Storage         = WGPUBufferBindingType_Storage,
         ReadOnlyStorage = WGPUBufferBindingType_ReadOnlyStorage,
     };
+
+    enum class BufferMapAsyncStatus : uint32_t
+    {
+        Success                 = WGPUBufferMapAsyncStatus_Success,
+#ifdef WEBGPU_BACKEND_DAWN
+        InstanceDropped         = WGPUBufferMapAsyncStatus_InstanceDropped,
+#endif
+        ValidationError         = WGPUBufferMapAsyncStatus_ValidationError,
+        Unknown                 = WGPUBufferMapAsyncStatus_Unknown,
+        DeviceLost              = WGPUBufferMapAsyncStatus_DeviceLost,
+        DestroyedBeforeCallback = WGPUBufferMapAsyncStatus_DestroyedBeforeCallback,
+        UnmappedBeforeCallback  = WGPUBufferMapAsyncStatus_UnmappedBeforeCallback,
+        MappingAlreadyPending   = WGPUBufferMapAsyncStatus_MappingAlreadyPending,
+        OffsetOutOfRange        = WGPUBufferMapAsyncStatus_OffsetOutOfRange,
+        SizeOutOfRange          = WGPUBufferMapAsyncStatus_SizeOutOfRange,
+    };
+
+    enum class BufferUsageFlags : uint32_t
+    {
+        None         = WGPUBufferUsage_None,
+        MapRead      = WGPUBufferUsage_MapRead,
+        MapWrite     = WGPUBufferUsage_MapWrite,
+        CopySrc      = WGPUBufferUsage_CopySrc,
+        CopyDst      = WGPUBufferUsage_CopyDst,
+        Index        = WGPUBufferUsage_Index,
+        Vertex       = WGPUBufferUsage_Vertex,
+        Uniform      = WGPUBufferUsage_Uniform,
+        Storage      = WGPUBufferUsage_Storage,
+        Indirect     = WGPUBufferUsage_Indirect,
+        QueryResolve = WGPUBufferUsage_QueryResolve,
+    };
+
+    BufferUsageFlags operator|(BufferUsageFlags lhs, BufferUsageFlags rhs);
+    BufferUsageFlags & operator|=(BufferUsageFlags& lhs, BufferUsageFlags rhs);
+    BufferUsageFlags operator&(BufferUsageFlags lhs, BufferUsageFlags rhs);
+    BufferUsageFlags & operator&=(BufferUsageFlags& lhs, BufferUsageFlags rhs);
+    bool operator==(BufferUsageFlags lhs, BufferUsageFlags rhs);
 
     enum class ColorWriteMaskFlags : uint32_t
     {
@@ -286,6 +324,19 @@ namespace wgpu
         ExpandResolveTexture = WGPULoadOp_ExpandResolveTexture,
 #endif
     };
+
+    enum class MapModeFlags : uint32_t
+    {
+        None  = WGPUMapMode_None,
+        Read  = WGPUMapMode_Read,
+        Write = WGPUMapMode_Write,
+    };
+
+    MapModeFlags operator|(MapModeFlags lhs, MapModeFlags rhs);
+    MapModeFlags & operator|=(MapModeFlags& lhs, MapModeFlags rhs);
+    MapModeFlags operator&(MapModeFlags lhs, MapModeFlags rhs);
+    MapModeFlags & operator&=(MapModeFlags& lhs, MapModeFlags rhs);
+    bool operator==(MapModeFlags lhs, MapModeFlags rhs);
 
     enum class PowerPreference : uint32_t
     {
@@ -715,6 +766,7 @@ namespace wgpu
     };
 
     // Callback Types
+    using MapBufferCallback = std::function<void(BufferMapAsyncStatus status)>;
     using RequestAdapterCallback = std::function<void(RequestAdapterStatus status, const Adapter &adapter,
         const std::string &message)>;
     using RequestDeviceCallback = std::function<void(RequestDeviceStatus status, const Device &device,
@@ -739,7 +791,7 @@ namespace wgpu
         [[nodiscard]] std::optional<SupportedLimits> get_limits() const;
         [[nodiscard]] std::optional<AdapterProperties> get_properties() const;
         [[nodiscard]] bool has_feature(FeatureName feature) const;
-        std::unique_ptr<RequestDeviceCallback> request_device(const DeviceDescriptor &descriptor,
+        [[nodiscard]] std::unique_ptr<RequestDeviceCallback> request_device(const DeviceDescriptor &descriptor,
             RequestDeviceCallback &&callback) const;
 
     private:
@@ -761,6 +813,30 @@ namespace wgpu
 
     private:
         WGPUBindGroupLayout m_handle{nullptr};
+    };
+
+    class Buffer
+    {
+    public:
+        explicit Buffer(const WGPUBuffer &handle);
+        ~Buffer();
+
+        Buffer(const Buffer &other);
+        Buffer(Buffer &&other) noexcept;
+        Buffer & operator=(const Buffer &other);
+        Buffer & operator=(Buffer &&other) noexcept;
+
+        [[nodiscard]] WGPUBuffer c_ptr() const;
+
+        [[nodiscard]] const void * get_const_mapped_range(size_t offset, size_t size) const;
+        template<typename T>
+        [[nodiscard]] const T * get_const_mapped_range(size_t offset, size_t count) const;
+        [[nodiscard]] std::unique_ptr<MapBufferCallback> map_async(MapModeFlags mode, size_t offset, size_t size,
+            MapBufferCallback &&callback) const;
+        void unmap() const;
+
+    private:
+        WGPUBuffer m_handle{nullptr};
     };
 
     class CommandBuffer
@@ -794,6 +870,8 @@ namespace wgpu
         [[nodiscard]] WGPUCommandEncoder c_ptr() const;
 
         [[nodiscard]] RenderPassEncoder begin_render_pass(const RenderPassDescriptor &descriptor) const;
+        void copy_buffer_to_buffer(const Buffer &source, uint64_t source_offset, const Buffer &destination,
+            uint64_t destination_offset, uint64_t size) const;
         [[nodiscard]] CommandBuffer finish(const CommandBufferDescriptor &descriptor) const;
 
     private:
@@ -814,12 +892,14 @@ namespace wgpu
         [[nodiscard]] WGPUDevice c_ptr() const;
 
         [[nodiscard]] BindGroupLayout create_bind_group_layout(const BindGroupLayoutDescriptor &descriptor) const;
+        [[nodiscard]] Buffer create_buffer(const BufferDescriptor &descriptor) const;
         [[nodiscard]] CommandEncoder create_command_encoder(const CommandEncoderDescriptor &descriptor) const;
         [[nodiscard]] PipelineLayout create_pipeline_layout(const PipelineLayoutDescriptor &descriptor) const;
         [[nodiscard]] RenderPipeline create_render_pipeline(const RenderPipelineDescriptor &descriptor) const;
         [[nodiscard]] ShaderModule create_shader_module(const ShaderModuleDescriptor &descriptor) const;
         [[nodiscard]] Texture create_texture(const TextureDescriptor &descriptor) const;
         [[nodiscard]] Queue get_queue() const;
+        void tick() const;
 
     private:
         WGPUDevice m_handle{nullptr};
@@ -840,7 +920,7 @@ namespace wgpu
 
         [[nodiscard]] std::expected<Adapter, std::string> create_adapter(const RequestAdapterOptions &options) const;
         void process_events() const;
-        std::unique_ptr<RequestAdapterCallback> request_adapter(const RequestAdapterOptions &options,
+        [[nodiscard]] std::unique_ptr<RequestAdapterCallback> request_adapter(const RequestAdapterOptions &options,
             RequestAdapterCallback &&callback) const;
 
     private:
@@ -878,6 +958,8 @@ namespace wgpu
         [[nodiscard]] WGPUQueue c_ptr() const;
 
         void submit(const std::vector<CommandBuffer> &commands) const;
+        template<typename T>
+        void write_buffer(const Buffer &buffer, uint64_t buffer_offset, const std::vector<T> &data) const;
 
     private:
         WGPUQueue m_handle{nullptr};
@@ -1035,6 +1117,15 @@ namespace wgpu
         BufferBindingType type;
         bool has_dynamic_offset;
         uint64_t min_binding_size;
+    };
+
+    struct BufferDescriptor
+    {
+        const ChainedStruct *next_in_chain;
+        std::string label;
+        BufferUsageFlags usage;
+        uint64_t size;
+        bool mapped_at_creation;
     };
 
     struct ChainedStruct
@@ -1434,4 +1525,17 @@ namespace wgpu
 
     // Non-member Functions
     Instance create_instance(const InstanceDescriptor &descriptor);
+
+    // Template Definitions
+    template<typename T>
+    [[nodiscard]] const T * Buffer::get_const_mapped_range(const size_t offset, const size_t count) const
+    {
+        return static_cast<const T *>(get_const_mapped_range(offset, count * sizeof(T)));
+    }
+
+    template<typename T>
+    void Queue::write_buffer(const Buffer &buffer, const uint64_t buffer_offset, const std::vector<T> &data) const
+    {
+        wgpuQueueWriteBuffer(m_handle, buffer.c_ptr(), buffer_offset, data.data(), data.size() * sizeof(T));
+    }
 }
