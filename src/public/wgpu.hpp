@@ -831,6 +831,7 @@ namespace wgpu
         [[nodiscard]] const void * get_const_mapped_range(size_t offset, size_t size) const;
         template<typename T>
         [[nodiscard]] const T * get_const_mapped_range(size_t offset, size_t count) const;
+        [[nodiscard]] uint64_t get_size() const;
         [[nodiscard]] std::unique_ptr<MapBufferCallback> map_async(MapModeFlags mode, size_t offset, size_t size,
             MapBufferCallback &&callback) const;
         void unmap() const;
@@ -979,8 +980,12 @@ namespace wgpu
         [[nodiscard]] WGPURenderPassEncoder c_ptr() const;
 
         void draw(uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance) const;
+        void draw_indexed(uint32_t index_count, uint32_t instance_count, uint32_t first_index, int32_t base_vertex,
+            uint32_t first_instance) const;
         void end() const;
+        void set_index_buffer(const Buffer &buffer, IndexFormat format, uint64_t offset, uint64_t size) const;
         void set_pipeline(const RenderPipeline &pipeline) const;
+        void set_vertex_buffer(uint32_t slot, const Buffer &buffer, uint64_t offset, uint64_t size) const;
 
     private:
         WGPURenderPassEncoder m_handle{nullptr};

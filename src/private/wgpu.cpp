@@ -471,6 +471,11 @@ namespace wgpu
         return wgpuBufferGetConstMappedRange(m_handle, offset, size);
     }
 
+    uint64_t Buffer::get_size() const
+    {
+        return wgpuBufferGetSize(m_handle);
+    }
+
     std::unique_ptr<MapBufferCallback> Buffer::map_async(const MapModeFlags mode, const size_t offset,
         const size_t size, MapBufferCallback &&callback) const
     {
@@ -1420,14 +1425,34 @@ namespace wgpu
         wgpuRenderPassEncoderDraw(m_handle, vertex_count, instance_count, first_vertex, first_instance);
     }
 
+    void RenderPassEncoder::draw_indexed(const uint32_t index_count, const uint32_t instance_count,
+        const uint32_t first_index, const int32_t base_vertex, const uint32_t first_instance) const
+    {
+        wgpuRenderPassEncoderDrawIndexed(m_handle, index_count, instance_count, first_index, base_vertex,
+            first_instance);
+    }
+
     void RenderPassEncoder::end() const
     {
         wgpuRenderPassEncoderEnd(m_handle);
     }
 
+    void RenderPassEncoder::set_index_buffer(const Buffer &buffer, const IndexFormat format, const uint64_t offset,
+        const uint64_t size) const
+    {
+        wgpuRenderPassEncoderSetIndexBuffer(m_handle, buffer.c_ptr(), static_cast<WGPUIndexFormat>(format), offset,
+            size);
+    }
+
     void RenderPassEncoder::set_pipeline(const RenderPipeline &pipeline) const
     {
         wgpuRenderPassEncoderSetPipeline(m_handle, pipeline.c_ptr());
+    }
+
+    void RenderPassEncoder::set_vertex_buffer(const uint32_t slot, const Buffer &buffer, const uint64_t offset,
+        const uint64_t size) const
+    {
+        wgpuRenderPassEncoderSetVertexBuffer(m_handle, slot, buffer.c_ptr(), offset, size);
     }
 
     RenderPipeline::RenderPipeline(const WGPURenderPipeline &handle) : m_handle(handle)

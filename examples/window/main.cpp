@@ -40,6 +40,7 @@ int main()
     while (!glfwWindowShouldClose(window))
     {
         instance.process_events();
+        device.tick();
         glfwPollEvents();
 
         const auto command_encoder = device.create_command_encoder({.label = "Command Encoder"});
