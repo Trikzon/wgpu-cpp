@@ -72,6 +72,7 @@ int main()
 
     const auto render_pipeline = device.create_render_pipeline(wgpu::RenderPipelineDescriptor
     {
+        .label = "Render Pipeline",
         .vertex = wgpu::VertexState
         {
             .module = shader_module,

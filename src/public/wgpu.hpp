@@ -11,6 +11,7 @@ namespace wgpu
 {
     // RAII Handle Forward Declarations
     class Adapter;
+    class BindGroup;
     class BindGroupLayout;
     class Buffer;
     class CommandBuffer;
@@ -27,6 +28,8 @@ namespace wgpu
 
     // Struct Forward Declarations
     struct AdapterProperties;
+    struct BindGroupDescriptor;
+    struct BindGroupEntry;
     struct BindGroupLayoutDescriptor;
     struct BindGroupLayoutEntry;
     struct BlendComponent;
@@ -798,6 +801,23 @@ namespace wgpu
         WGPUAdapter m_handle{nullptr};
     };
 
+    class BindGroup
+    {
+    public:
+        explicit BindGroup(const WGPUBindGroup &handle);
+        ~BindGroup();
+
+        BindGroup(const BindGroup &other);
+        BindGroup(BindGroup &&other) noexcept;
+        BindGroup & operator=(const BindGroup &other);
+        BindGroup & operator=(BindGroup &&other) noexcept;
+
+        [[nodiscard]] WGPUBindGroup c_ptr() const;
+
+    private:
+        WGPUBindGroup m_handle{nullptr};
+    };
+
     class BindGroupLayout
     {
     public:
@@ -892,6 +912,7 @@ namespace wgpu
 
         [[nodiscard]] WGPUDevice c_ptr() const;
 
+        [[nodiscard]] BindGroup create_bind_group(const BindGroupDescriptor &descriptor) const;
         [[nodiscard]] BindGroupLayout create_bind_group_layout(const BindGroupLayoutDescriptor &descriptor) const;
         [[nodiscard]] Buffer create_buffer(const BufferDescriptor &descriptor) const;
         [[nodiscard]] CommandEncoder create_command_encoder(const CommandEncoderDescriptor &descriptor) const;
@@ -960,6 +981,8 @@ namespace wgpu
 
         void submit(const std::vector<CommandBuffer> &commands) const;
         template<typename T>
+        void write_buffer(const Buffer &buffer, uint64_t buffer_offset, const T &data) const;
+        template<typename T>
         void write_buffer(const Buffer &buffer, uint64_t buffer_offset, const std::vector<T> &data) const;
 
     private:
@@ -983,6 +1006,8 @@ namespace wgpu
         void draw_indexed(uint32_t index_count, uint32_t instance_count, uint32_t first_index, int32_t base_vertex,
             uint32_t first_instance) const;
         void end() const;
+        void set_bind_group(uint32_t group_index, const BindGroup &group,
+            const std::vector<uint32_t> &dynamic_offsets = {}) const;
         void set_index_buffer(const Buffer &buffer, IndexFormat format, uint64_t offset, uint64_t size) const;
         void set_pipeline(const RenderPipeline &pipeline) const;
         void set_vertex_buffer(uint32_t slot, const Buffer &buffer, uint64_t offset, uint64_t size) const;
@@ -1107,6 +1132,25 @@ namespace wgpu
         std::string driver_description;
         AdapterType adapter_type;
         BackendType backend_type;
+    };
+
+    struct BindGroupDescriptor
+    {
+        const ChainedStruct *next_in_chain;
+        std::string label;
+        BindGroupLayout layout;
+        std::vector<BindGroupEntry> entries;
+    };
+
+    struct BindGroupEntry
+    {
+        const ChainedStruct *next_in_chain;
+        uint32_t binding;
+        std::optional<Buffer> buffer;
+        uint64_t offset;
+        uint64_t size;
+        // TODO: std::optional<Sampler> sampler;
+        std::optional<TextureView> texture_view;
     };
 
     struct BindGroupLayoutDescriptor
@@ -1536,6 +1580,12 @@ namespace wgpu
     [[nodiscard]] const T * Buffer::get_const_mapped_range(const size_t offset, const size_t count) const
     {
         return static_cast<const T *>(get_const_mapped_range(offset, count * sizeof(T)));
+    }
+
+    template<typename T>
+    void Queue::write_buffer(const Buffer &buffer, const uint64_t buffer_offset, const T &data) const
+    {
+        wgpuQueueWriteBuffer(m_handle, buffer.c_ptr(), buffer_offset, &data, sizeof(T));
     }
 
     template<typename T>

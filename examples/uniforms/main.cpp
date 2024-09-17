@@ -15,7 +15,7 @@ int main()
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-    GLFWwindow *window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "wgpu-cpp triangle_with_buffers example",
+    GLFWwindow *window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "wgpu-cpp uniforms example",
         nullptr, nullptr);
 
     const wgpu::Instance instance = wgpu::create_instance({});
@@ -72,6 +72,47 @@ int main()
     });
     queue.write_buffer(index_buffer, 0, index_data);
 
+    const auto uniform_buffer = device.create_buffer(
+    {
+        .label = "Uniform Buffer",
+        .usage = wgpu::BufferUsageFlags::CopyDst | wgpu::BufferUsageFlags::Uniform,
+        .mapped_at_creation = false,
+        .size = sizeof(float),
+    });
+
+    const auto bind_group_layout = device.create_bind_group_layout(
+    {
+        .label = "Bind Group Layout",
+        .entries = std::vector<wgpu::BindGroupLayoutEntry>
+        {
+            {
+                .binding = 0,
+                .visibility = wgpu::ShaderStageFlags::Vertex,
+                .buffer = wgpu::BufferBindingLayout
+                {
+                    .type = wgpu::BufferBindingType::Uniform,
+                    .has_dynamic_offset = false,
+                    .min_binding_size = sizeof(float),
+                }
+            }
+        }
+    });
+
+    const auto bind_group = device.create_bind_group(
+    {
+        .label = "Bind Group",
+        .layout = bind_group_layout,
+        .entries = std::vector<wgpu::BindGroupEntry>
+        {
+            {
+                .binding = 0,
+                .buffer = uniform_buffer,
+                .offset = 0,
+                .size = sizeof(float),
+            }
+        }
+    });
+
     constexpr auto shader_src = "struct VertexInput {\n"
                                 "   @location(0) position: vec2f,\n"
                                 "   @location(1) color: vec3f,\n"
@@ -82,11 +123,13 @@ int main()
                                 "   @location(0) color: vec3f,\n"
                                 "}\n"
                                 "\n"
+                                "@group(0) @binding(0) var<uniform> uTime: f32;\n"
+                                "\n"
                                 "@vertex\n"
                                 "fn vs_main(in: VertexInput) -> VertexOutput {\n"
                                 "   var out: VertexOutput;\n"
-                                "   let ratio = 600.0 / 400.0;"
-                                "   out.position = vec4f(in.position.x, in.position.y * ratio, 0.0, 1.0);\n"
+                                "   let ratio = 600.0 / 400.0;\n"
+                                "   out.position = vec4f(in.position.x + cos(uTime), (in.position.y + sin(uTime)) * ratio, 0.0, 1.0);\n"
                                 "   out.color = in.color;\n"
                                 "   return out;\n"
                                 "}\n"
@@ -111,9 +154,19 @@ int main()
         .label = "Shader Module",
     });
 
+    const auto pipeline_layout = device.create_pipeline_layout(
+    {
+        .label = "Pipeline Layout",
+        .bind_group_layouts = std::vector
+        {
+            bind_group_layout,
+        }
+    });
+
     const auto render_pipeline = device.create_render_pipeline(wgpu::RenderPipelineDescriptor
     {
         .label = "Render Pipeline",
+        .layout = pipeline_layout,
         .vertex = wgpu::VertexState
         {
             .module = shader_module,
@@ -190,6 +243,8 @@ int main()
         device.tick();
         glfwPollEvents();
 
+        queue.write_buffer(uniform_buffer, 0, static_cast<float>(glfwGetTime()));
+
         const auto command_encoder = device.create_command_encoder({.label = "Command Encoder"});
 
         const auto surface_view = surface.get_current_texture().texture.create_view();
@@ -211,6 +266,7 @@ int main()
         render_pass.set_pipeline(render_pipeline);
         render_pass.set_vertex_buffer(0, point_buffer, 0, point_buffer.get_size());
         render_pass.set_index_buffer(index_buffer, wgpu::IndexFormat::Uint16, 0, index_buffer.get_size());
+        render_pass.set_bind_group(0, bind_group);
         render_pass.draw_indexed(index_data.size(), 1, 0, 0, 0);
 
         render_pass.end();

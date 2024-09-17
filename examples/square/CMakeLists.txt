@@ -1,4 +1,4 @@
-project(triangle)
+project(square)
 
 add_executable(square main.cpp)
 

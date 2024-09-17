@@ -333,6 +333,72 @@ namespace wgpu
         return handle;
     }
 
+    BindGroup::BindGroup(const WGPUBindGroup &handle) : m_handle(handle)
+    {
+
+    }
+
+    BindGroup::~BindGroup()
+    {
+        if (m_handle != nullptr)
+        {
+            wgpuBindGroupRelease(m_handle);
+        }
+    }
+
+    BindGroup::BindGroup(const BindGroup &other) : m_handle(other.m_handle)
+    {
+        if (m_handle != nullptr)
+        {
+#ifdef WEBGPU_BACKEND_WGPU
+            wgpuBindGroupReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+            wgpuBindGroupAddRef(m_handle);
+#endif
+        }
+    }
+
+    BindGroup::BindGroup(BindGroup &&other) noexcept
+    {
+        std::swap(m_handle, other.m_handle);
+    }
+
+    BindGroup & BindGroup::operator=(const BindGroup &other)
+    {
+        if (this != &other)
+        {
+            if (m_handle != nullptr)
+            {
+                wgpuBindGroupRelease(m_handle);
+            }
+
+            m_handle = other.m_handle;
+            if (m_handle != nullptr)
+            {
+#ifdef WEBGPU_BACKEND_WGPU
+            wgpuBindGroupReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+            wgpuBindGroupAddRef(m_handle);
+#endif
+            }
+        }
+        return *this;
+    }
+
+    BindGroup & BindGroup::operator=(BindGroup &&other) noexcept
+    {
+        if (this != &other)
+        {
+            std::swap(m_handle, other.m_handle);
+        }
+        return *this;
+    }
+
+    WGPUBindGroup BindGroup::c_ptr() const
+    {
+        return m_handle;
+    }
+
     BindGroupLayout::BindGroupLayout(const WGPUBindGroupLayout &handle) : m_handle(handle)
     {
 
@@ -766,6 +832,36 @@ namespace wgpu
     WGPUDevice Device::c_ptr() const
     {
         return m_handle;
+    }
+
+    BindGroup Device::create_bind_group(const BindGroupDescriptor &descriptor) const
+    {
+        std::vector<WGPUBindGroupEntry> wgpu_entries;
+        wgpu_entries.reserve(descriptor.entries.size());
+        for (const BindGroupEntry &entry : descriptor.entries)
+        {
+            wgpu_entries.push_back(WGPUBindGroupEntry
+            {
+                .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(entry.next_in_chain),
+                .binding = entry.binding,
+                .buffer = entry.buffer ? entry.buffer->c_ptr() : nullptr,
+                .offset = entry.offset,
+                .size = entry.size,
+                .sampler = nullptr,
+                .textureView = entry.texture_view ? entry.texture_view->c_ptr() : nullptr,
+            });
+        }
+
+        const WGPUBindGroupDescriptor wgpu_descriptor
+        {
+            .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(descriptor.next_in_chain),
+            .label = descriptor.label.c_str(),
+            .layout = descriptor.layout.c_ptr(),
+            .entryCount = wgpu_entries.size(),
+            .entries = wgpu_entries.data(),
+        };
+
+        return BindGroup{wgpuDeviceCreateBindGroup(m_handle, &wgpu_descriptor)};
     }
 
     BindGroupLayout Device::create_bind_group_layout(const BindGroupLayoutDescriptor &descriptor) const
@@ -1435,6 +1531,12 @@ namespace wgpu
     void RenderPassEncoder::end() const
     {
         wgpuRenderPassEncoderEnd(m_handle);
+    }
+
+    void RenderPassEncoder::set_bind_group(const uint32_t group_index, const BindGroup &group,
+        const std::vector<uint32_t> &dynamic_offsets) const
+    {
+        wgpuRenderPassEncoderSetBindGroup(m_handle, group_index, group.c_ptr(), dynamic_offsets.size(), dynamic_offsets.data());
     }
 
     void RenderPassEncoder::set_index_buffer(const Buffer &buffer, const IndexFormat format, const uint64_t offset,
