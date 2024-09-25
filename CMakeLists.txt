@@ -2,6 +2,11 @@ cmake_minimum_required(VERSION 3.28)
 
 project(wgpu_cpp CXX)
 
+option(WPGU_CPP_BUILD_EXAMPLES "Build examples" OFF)
+if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    set(WPGU_CPP_BUILD_EXAMPLES ON)
+endif()
+
 set(CMAKE_CXX_STANDARD 23)
 
 set(SOURCES
@@ -23,6 +28,8 @@ endif()
 add_subdirectory(vendor/WebGPU-distribution)
 target_link_libraries(wgpu_cpp PUBLIC webgpu)
 
-add_subdirectory(examples)
+if (WPGU_CPP_BUILD_EXAMPLES)
+    add_subdirectory(examples)
+endif()
 
 target_copy_webgpu_binaries(wgpu_cpp)
