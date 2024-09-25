@@ -11,6 +11,7 @@ int main()
     if (!glfwInit())
     {
         std::cerr << "Failed to initialize GLFW." << std::endl;
+        return -1;
     }
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
