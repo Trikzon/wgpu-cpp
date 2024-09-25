@@ -847,7 +847,7 @@ namespace wgpu
                 .buffer = entry.buffer ? entry.buffer->c_ptr() : nullptr,
                 .offset = entry.offset,
                 .size = entry.size,
-                .sampler = nullptr,
+                .sampler = entry.sampler ? entry.sampler->c_ptr() : nullptr,
                 .textureView = entry.texture_view ? entry.texture_view->c_ptr() : nullptr,
             });
         }
@@ -1128,6 +1128,27 @@ namespace wgpu
         };
 
         return RenderPipeline{wgpuDeviceCreateRenderPipeline(m_handle, &wgpu_descriptor)};
+    }
+
+    Sampler Device::create_sampler(const SamplerDescriptor &descriptor) const
+    {
+        const WGPUSamplerDescriptor wgpu_sampler_descriptor
+        {
+            .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(descriptor.next_in_chain),
+            .label = descriptor.label.c_str(),
+            .addressModeU = static_cast<WGPUAddressMode>(descriptor.address_mode_u),
+            .addressModeV = static_cast<WGPUAddressMode>(descriptor.address_mode_v),
+            .addressModeW = static_cast<WGPUAddressMode>(descriptor.address_mode_w),
+            .magFilter = static_cast<WGPUFilterMode>(descriptor.mag_filter),
+            .minFilter = static_cast<WGPUFilterMode>(descriptor.min_filter),
+            .mipmapFilter = static_cast<WGPUMipmapFilterMode>(descriptor.mipmap_filter),
+            .lodMinClamp = descriptor.lod_min_clamp,
+            .lodMaxClamp = descriptor.lod_max_clamp,
+            .compare = static_cast<WGPUCompareFunction>(descriptor.compare),
+            .maxAnisotropy = descriptor.max_anistropy,
+        };
+
+        return Sampler{wgpuDeviceCreateSampler(m_handle, &wgpu_sampler_descriptor)};
     }
 
     ShaderModule Device::create_shader_module(const ShaderModuleDescriptor &descriptor) const
@@ -1636,6 +1657,72 @@ namespace wgpu
     }
 
     WGPURenderPipeline RenderPipeline::c_ptr() const
+    {
+        return m_handle;
+    }
+
+    Sampler::Sampler(const WGPUSampler &handle) : m_handle(handle)
+    {
+
+    }
+
+    Sampler::~Sampler()
+    {
+        if (m_handle != nullptr)
+        {
+            wgpuSamplerRelease(m_handle);
+        }
+    }
+
+    Sampler::Sampler(const Sampler &other) : m_handle(other.m_handle)
+    {
+        if (m_handle != nullptr)
+        {
+#ifdef WEBGPU_BACKEND_WGPU
+            wgpuSamplerReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+            wgpuSamplerAddRef(m_handle);
+#endif
+        }
+    }
+
+    Sampler::Sampler(Sampler &&other) noexcept
+    {
+        std::swap(m_handle, other.m_handle);
+    }
+
+    Sampler& Sampler::operator=(const Sampler &other)
+    {
+        if (this != &other)
+        {
+            if (m_handle != nullptr)
+            {
+                wgpuSamplerRelease(m_handle);
+            }
+
+            m_handle = other.m_handle;
+            if (m_handle != nullptr)
+            {
+#ifdef WEBGPU_BACKEND_WGPU
+            wgpuSamplerReference(m_handle);
+#elif WEBGPU_BACKEND_DAWN
+            wgpuSamplerAddRef(m_handle);
+#endif
+            }
+        }
+        return *this;
+    }
+
+    Sampler& Sampler::operator=(Sampler &&other) noexcept
+    {
+        if (this != &other)
+        {
+            std::swap(m_handle, other.m_handle);
+        }
+        return *this;
+    }
+
+    WGPUSampler Sampler::c_ptr() const
     {
         return m_handle;
     }

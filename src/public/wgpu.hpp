@@ -21,6 +21,7 @@ namespace wgpu
     class Queue;
     class RenderPassEncoder;
     class RenderPipeline;
+    class Sampler;
     class ShaderModule;
     class Surface;
     class Texture;
@@ -47,10 +48,14 @@ namespace wgpu
     struct DeviceDescriptor;
     struct Extent3D;
     struct FragmentState;
+    struct ImageCopyTexture;
+#ifdef WEBGPU_BACKEND_DAWN
     struct InstanceFeatures;
+#endif
     struct InstanceDescriptor;
     struct Limits;
     struct MultisampleState;
+    struct Origin3D;
     struct PipelineLayoutDescriptor;
     struct PrimitiveState;
     struct QueueDescriptor;
@@ -61,6 +66,7 @@ namespace wgpu
     struct RenderPassDescriptor;
     struct RenderPipelineDescriptor;
     struct SamplerBindingLayout;
+    struct SamplerDescriptor;
     struct ShaderModuleDescriptor;
     struct ShaderModuleSPIRVDescriptor;
     struct ShaderModuleWGSLDescriptor;
@@ -71,6 +77,7 @@ namespace wgpu
     struct SurfaceConfiguration;
     struct SurfaceTexture;
     struct TextureBindingLayout;
+    struct TextureDataLayout;
     struct TextureDescriptor;
     struct TextureViewDescriptor;
     struct VertexAttribute;
@@ -84,6 +91,16 @@ namespace wgpu
         IntegratedGPU = WGPUAdapterType_IntegratedGPU,
         CPU           = WGPUAdapterType_CPU,
         Unknown       = WGPUAdapterType_Unknown,
+    };
+
+    enum class AddressMode : uint32_t
+    {
+#ifdef WEBGPU_BACKEND_DAWN
+        Undefined    = WGPUAddressMode_Undefined,
+#endif
+        ClampToEdge  = WGPUAddressMode_ClampToEdge,
+        Repeat       = WGPUAddressMode_Repeat,
+        MirrorRepeat = WGPUAddressMode_MirrorRepeat,
     };
 
     enum class BackendType : uint32_t
@@ -302,6 +319,15 @@ namespace wgpu
 #endif
     };
 
+    enum class FilterMode : uint32_t
+    {
+#ifdef WEBGPU_BACKEND_DAWN
+        Undefined = WGPUFilterMode_Undefined,
+#endif
+        Nearest = WGPUFilterMode_Nearest,
+        Linear = WGPUFilterMode_Linear,
+    };
+
     enum class FrontFace : uint32_t
     {
 #ifdef WEBGPU_BACKEND_DAWN
@@ -340,6 +366,15 @@ namespace wgpu
     MapModeFlags operator&(MapModeFlags lhs, MapModeFlags rhs);
     MapModeFlags & operator&=(MapModeFlags& lhs, MapModeFlags rhs);
     bool operator==(MapModeFlags lhs, MapModeFlags rhs);
+
+    enum class MipmapFilterMode : uint32_t
+    {
+#ifdef WEBGPU_BACKEND_DAWN
+        Undefined = WGPUMipmapFilterMode_Undefined,
+#endif
+        Nearest = WGPUMipmapFilterMode_Nearest,
+        Linear = WGPUMipmapFilterMode_Linear,
+    };
 
     enum class PowerPreference : uint32_t
     {
@@ -918,6 +953,7 @@ namespace wgpu
         [[nodiscard]] CommandEncoder create_command_encoder(const CommandEncoderDescriptor &descriptor) const;
         [[nodiscard]] PipelineLayout create_pipeline_layout(const PipelineLayoutDescriptor &descriptor) const;
         [[nodiscard]] RenderPipeline create_render_pipeline(const RenderPipelineDescriptor &descriptor) const;
+        [[nodiscard]] Sampler create_sampler(const SamplerDescriptor &descriptor) const;
         [[nodiscard]] ShaderModule create_shader_module(const ShaderModuleDescriptor &descriptor) const;
         [[nodiscard]] Texture create_texture(const TextureDescriptor &descriptor) const;
         [[nodiscard]] std::optional<SupportedLimits> get_limits() const;
@@ -985,6 +1021,9 @@ namespace wgpu
         void write_buffer(const Buffer &buffer, uint64_t buffer_offset, const T &data) const;
         template<typename T>
         void write_buffer(const Buffer &buffer, uint64_t buffer_offset, const std::vector<T> &data) const;
+        template<typename T>
+        void write_texture(const ImageCopyTexture &destination, const std::vector<T> &data, const TextureDataLayout &data_layout, const Extent3D &write_size) const;
+
 
     private:
         WGPUQueue m_handle{nullptr};
@@ -1032,6 +1071,23 @@ namespace wgpu
 
     private:
         WGPURenderPipeline m_handle{nullptr};
+    };
+
+    class Sampler
+    {
+    public:
+        explicit Sampler(const WGPUSampler &handle);
+        ~Sampler();
+
+        Sampler(const Sampler &other);
+        Sampler(Sampler &&other) noexcept;
+        Sampler & operator=(const Sampler &other);
+        Sampler & operator=(Sampler &&other) noexcept;
+
+        [[nodiscard]] WGPUSampler c_ptr() const;
+
+    private:
+        WGPUSampler m_handle{nullptr};
     };
 
     class ShaderModule
@@ -1150,7 +1206,7 @@ namespace wgpu
         std::optional<Buffer> buffer;
         uint64_t offset;
         uint64_t size;
-        // TODO: std::optional<Sampler> sampler;
+        std::optional<Sampler> sampler;
         std::optional<TextureView> texture_view;
     };
 
@@ -1309,6 +1365,13 @@ namespace wgpu
         bool alpha_to_coverage_enabled;
     };
 
+    struct Origin3D
+    {
+        uint32_t x;
+        uint32_t y;
+        uint32_t z;
+    };
+
     struct PipelineLayoutDescriptor
     {
         const ChainedStruct *next_in_chain;
@@ -1383,6 +1446,22 @@ namespace wgpu
     {
         const ChainedStruct *next_in_chain;
         SamplerBindingType type;
+    };
+
+    struct SamplerDescriptor
+    {
+        const ChainedStruct *next_in_chain;
+        std::string label;
+        AddressMode address_mode_u;
+        AddressMode address_mode_v;
+        AddressMode address_mode_w;
+        FilterMode mag_filter;
+        FilterMode min_filter;
+        MipmapFilterMode mipmap_filter;
+        float lod_min_clamp;
+        float lod_max_clamp;
+        CompareFunction compare;
+        uint16_t max_anistropy;
     };
 
     struct ShaderModuleDescriptor
@@ -1463,6 +1542,14 @@ namespace wgpu
         TextureSampleType sample_type;
         TextureViewDimension view_dimension;
         bool multisampled;
+    };
+
+    struct TextureDataLayout
+    {
+        const ChainedStruct *next_in_chain;
+        uint64_t offset;
+        uint32_t bytes_per_row;
+        uint32_t rows_per_image;
     };
 
     struct TextureDescriptor
@@ -1561,6 +1648,17 @@ namespace wgpu
         float depth_bias_clamp;
     };
 
+    struct ImageCopyTexture
+    {
+#ifdef WEBGPU_BACKEND_WGPU
+        const ChainedStruct *next_in_chain;
+#endif
+        Texture texture;
+        uint32_t mip_level;
+        Origin3D origin;
+        TextureAspect aspect;
+    };
+
     struct RenderPipelineDescriptor
     {
         const ChainedStruct *next_in_chain;
@@ -1593,5 +1691,39 @@ namespace wgpu
     void Queue::write_buffer(const Buffer &buffer, const uint64_t buffer_offset, const std::vector<T> &data) const
     {
         wgpuQueueWriteBuffer(m_handle, buffer.c_ptr(), buffer_offset, data.data(), data.size() * sizeof(T));
+    }
+
+    template<typename T>
+    void Queue::write_texture(const ImageCopyTexture &destination, const std::vector<T> &data,
+        const TextureDataLayout &data_layout, const Extent3D &write_size) const
+    {
+        const WGPUImageCopyTexture wgpu_destination
+        {
+#ifdef WEBGPU_BACKEND_WGPU
+            .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(destination.next_in_chain),
+#endif
+            .texture = destination.texture.c_ptr(),
+            .mipLevel = destination.mip_level,
+            .origin = {destination.origin.x, destination.origin.y, destination.origin.z},
+            .aspect = static_cast<WGPUTextureAspect>(destination.aspect)
+        };
+
+        const WGPUTextureDataLayout wgpu_data_layout
+        {
+            .nextInChain = reinterpret_cast<const WGPUChainedStruct *>(data_layout.next_in_chain),
+            .offset = data_layout.offset,
+            .bytesPerRow = data_layout.bytes_per_row,
+            .rowsPerImage = data_layout.rows_per_image
+        };
+
+        const WGPUExtent3D wgpu_write_size
+        {
+            .width = write_size.width,
+            .height = write_size.height,
+            .depthOrArrayLayers = write_size.depth_or_array_layers
+        };
+
+        wgpuQueueWriteTexture(m_handle, &wgpu_destination, data.data(), data.size(), &wgpu_data_layout,
+            &wgpu_write_size);
     }
 }

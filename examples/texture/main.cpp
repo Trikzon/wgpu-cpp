@@ -16,7 +16,7 @@ int main()
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-    GLFWwindow *window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "wgpu-cpp square example",
+    GLFWwindow *window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "wgpu-cpp texture example",
         nullptr, nullptr);
 
     const wgpu::Instance instance = wgpu::create_instance({});
@@ -42,11 +42,11 @@ int main()
 
     const std::vector<float> point_data
     {
-        // x,    y,     r,   g,   b
-        -0.5, -0.5,   1.0, 0.0, 0.0, // Point #0
-        +0.5, -0.5,   0.0, 1.0, 0.0, // Point #1
-        +0.5, +0.5,   0.0, 0.0, 1.0, // Point #2
-        -0.5, +0.5,   1.0, 1.0, 0.0, // Point #3
+        // x,    y,     u,   v
+        -0.5, -0.5,   0.0, 1.0, // Point #0
+        +0.5, -0.5,   1.0, 1.0, // Point #1
+        +0.5, +0.5,   1.0, 0.0, // Point #2
+        -0.5, +0.5,   0.0, 0.0, // Point #3
     };
 
     const std::vector<uint16_t> index_data
@@ -73,28 +73,152 @@ int main()
     });
     queue.write_buffer(index_buffer, 0, index_data);
 
+    const auto texture = device.create_texture(wgpu::TextureDescriptor
+    {
+        .label = "Texture",
+        .usage = wgpu::TextureUsageFlags::TextureBinding | wgpu::TextureUsageFlags::CopyDst,
+        .dimension = wgpu::TextureDimension::_2D,
+        .size = {256, 256, 1},
+        .format = wgpu::TextureFormat::RGBA8Unorm,
+        .mip_level_count = 1,
+        .sample_count = 1,
+    });
+
+    const auto texture_view = texture.create_view(
+        wgpu::TextureViewDescriptor
+        {
+            .label = "Texture View",
+            .format = texture.get_format(),
+            .dimension = wgpu::TextureViewDimension::_2D,
+            .base_mip_level = 0,
+            .mip_level_count = texture.get_mip_level_count(),
+            .base_array_layer = 0,
+            .array_layer_count = texture.get_depth_or_array_layers(),
+            .aspect = wgpu::TextureAspect::All,
+        }
+    );
+
+    std::vector<uint8_t> pixels(4 * texture.get_width() * texture.get_height());
+    for (uint32_t i = 0; i < texture.get_width(); ++i)
+    {
+        for (uint32_t j = 0; j < texture.get_height(); ++j)
+        {
+            uint8_t *p = &pixels[4 * (j * texture.get_width() + i)];
+            p[0] = (i / 16) % 2 == (j / 16) % 2 ? 255 : 0;
+            p[1] = ((i - j) / 16) % 2 == 0 ? 255 : 0;
+            p[2] = ((i + j) / 16) % 2 == 0 ? 255 : 0;
+            p[3] = 255;
+        }
+    }
+
+    queue.write_texture(
+        wgpu::ImageCopyTexture
+        {
+            .texture = texture,
+            .mip_level = 0,
+            .origin = {0, 0, 0},
+            .aspect = wgpu::TextureAspect::All,
+        },
+        pixels,
+        wgpu::TextureDataLayout
+        {
+            .offset = 0,
+            .bytes_per_row = 4 * texture.get_width(),
+            .rows_per_image = texture.get_height(),
+        },
+        {texture.get_width(), texture.get_height(), texture.get_depth_or_array_layers()}
+    );
+
+    const auto sampler = device.create_sampler(
+        wgpu::SamplerDescriptor
+        {
+            .label = "Sampler",
+            .address_mode_u = wgpu::AddressMode::ClampToEdge,
+            .address_mode_v = wgpu::AddressMode::ClampToEdge,
+            .address_mode_w = wgpu::AddressMode::ClampToEdge,
+            .mag_filter = wgpu::FilterMode::Linear,
+            .min_filter = wgpu::FilterMode::Linear,
+            .mipmap_filter = wgpu::MipmapFilterMode::Linear,
+            .lod_min_clamp = 0.0f,
+            .lod_max_clamp = 1.0f,
+            .compare = wgpu::CompareFunction::Undefined,
+            .max_anistropy = 1,
+        }
+    );
+
+    const auto bind_group_layout = device.create_bind_group_layout(
+        wgpu::BindGroupLayoutDescriptor
+        {
+            .label = "Bind Group Layout",
+            .entries = std::vector<wgpu::BindGroupLayoutEntry>
+            {
+                {
+                    .binding = 0,
+                    .visibility = wgpu::ShaderStageFlags::Fragment,
+                    .texture = wgpu::TextureBindingLayout
+                    {
+                        .sample_type = wgpu::TextureSampleType::Float,
+                        .view_dimension = wgpu::TextureViewDimension::_2D,
+                        .multisampled = false,
+                    }
+                },
+                {
+                    .binding = 1,
+                    .visibility = wgpu::ShaderStageFlags::Fragment,
+                    .sampler = wgpu::SamplerBindingLayout
+                    {
+                        .type = wgpu::SamplerBindingType::Filtering,
+                    }
+                }
+            },
+        }
+    );
+
+    const auto bind_group = device.create_bind_group(
+        wgpu::BindGroupDescriptor
+        {
+            .label = "Bind Group",
+            .layout = bind_group_layout,
+            .entries = std::vector<wgpu::BindGroupEntry>
+            {
+                {
+                    .binding = 0,
+                    .texture_view = texture_view,
+                },
+                {
+                    .binding = 1,
+                    .sampler = sampler,
+                }
+            }
+        }
+    );
+
     constexpr auto shader_src = "struct VertexInput {\n"
                                 "   @location(0) position: vec2f,\n"
-                                "   @location(1) color: vec3f,\n"
+                                "   @location(1) uv: vec2f,\n"
                                 "};\n"
                                 "\n"
                                 "struct VertexOutput {\n"
                                 "   @builtin(position) position: vec4f,\n"
-                                "   @location(0) color: vec3f,\n"
+                                "   @location(0) uv: vec2f,\n"
                                 "}\n"
+                                "\n"
+                                "@group(0) @binding(0) var gradient_texture: texture_2d<f32>;\n"
+                                "@group(0) @binding(1) var texture_sampler: sampler;\n"
                                 "\n"
                                 "@vertex\n"
                                 "fn vs_main(in: VertexInput) -> VertexOutput {\n"
                                 "   var out: VertexOutput;\n"
                                 "   let ratio = 600.0 / 400.0;"
                                 "   out.position = vec4f(in.position.x, in.position.y * ratio, 0.0, 1.0);\n"
-                                "   out.color = in.color;\n"
+                                "   out.uv = in.uv;\n"
                                 "   return out;\n"
                                 "}\n"
                                 "\n"
                                 "@fragment\n"
                                 "fn fs_main(in: VertexOutput) -> @location(0) vec4f {\n"
-                                "   return vec4f(in.color, 1.0);\n"
+                                "   let color = textureSample(gradient_texture, texture_sampler, in.uv).rgb;\n"
+                                "   return vec4f(color, 1.0);\n"
                                 "}\n";
 
     constexpr wgpu::ShaderModuleWGSLDescriptor wgsl_descriptor
@@ -112,9 +236,21 @@ int main()
         .label = "Shader Module",
     });
 
+    const auto pipeline_layout = device.create_pipeline_layout(
+        wgpu::PipelineLayoutDescriptor
+        {
+            .label = "Pipeline Layout",
+            .bind_group_layouts = std::vector
+            {
+                bind_group_layout,
+            },
+        }
+    );
+
     const auto render_pipeline = device.create_render_pipeline(wgpu::RenderPipelineDescriptor
     {
         .label = "Render Pipeline",
+        .layout = pipeline_layout,
         .vertex = wgpu::VertexState
         {
             .module = shader_module,
@@ -123,7 +259,7 @@ int main()
             .buffers = std::vector<wgpu::VertexBufferLayout>
             {
                 {
-                    .array_stride = 5 * sizeof(float),
+                    .array_stride = 4 * sizeof(float),
                     .step_mode = wgpu::VertexStepMode::Vertex,
                     .attributes = std::vector<wgpu::VertexAttribute>
                     {
@@ -133,7 +269,7 @@ int main()
                             .shader_location = 0,
                         },
                         {
-                            .format = wgpu::VertexFormat::Float32x3,
+                            .format = wgpu::VertexFormat::Float32x2,
                             .offset = 2 * sizeof(float),
                             .shader_location = 1,
                         }
@@ -212,6 +348,7 @@ int main()
         render_pass.set_pipeline(render_pipeline);
         render_pass.set_vertex_buffer(0, point_buffer, 0, point_buffer.get_size());
         render_pass.set_index_buffer(index_buffer, wgpu::IndexFormat::Uint16, 0, index_buffer.get_size());
+        render_pass.set_bind_group(0, bind_group);
         render_pass.draw_indexed(index_data.size(), 1, 0, 0, 0);
 
         render_pass.end();
