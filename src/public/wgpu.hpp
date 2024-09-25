@@ -920,6 +920,7 @@ namespace wgpu
         [[nodiscard]] RenderPipeline create_render_pipeline(const RenderPipelineDescriptor &descriptor) const;
         [[nodiscard]] ShaderModule create_shader_module(const ShaderModuleDescriptor &descriptor) const;
         [[nodiscard]] Texture create_texture(const TextureDescriptor &descriptor) const;
+        [[nodiscard]] std::optional<SupportedLimits> get_limits() const;
         [[nodiscard]] Queue get_queue() const;
         void tick() const;
 

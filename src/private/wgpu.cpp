@@ -1169,6 +1169,24 @@ namespace wgpu
         return Texture{wgpuDeviceCreateTexture(m_handle, &wgpu_descriptor)};
     }
 
+    std::optional<SupportedLimits> Device::get_limits() const
+    {
+        WGPUSupportedLimits wgpu_supported_limits{};
+        const auto result = wgpuDeviceGetLimits(m_handle, &wgpu_supported_limits);
+
+#ifdef WEBGPU_BACKEND_WGPU
+        if (!result)
+#endif
+#ifdef WEBGPU_BACKEND_DAWN
+        if (result != WGPUStatus_Success)
+#endif
+        {
+            return std::nullopt;
+        }
+
+        return *reinterpret_cast<SupportedLimits *>(&wgpu_supported_limits);
+    }
+
     Queue Device::get_queue() const
     {
         return Queue{wgpuDeviceGetQueue(m_handle)};

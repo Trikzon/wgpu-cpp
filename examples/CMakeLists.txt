@@ -12,6 +12,7 @@ endif()
 add_subdirectory(vendor/glfw3webgpu)
 
 add_subdirectory(buffers)
+add_subdirectory(dynamic_uniforms)
 add_subdirectory(square)
 add_subdirectory(triangle)
 add_subdirectory(uniforms)

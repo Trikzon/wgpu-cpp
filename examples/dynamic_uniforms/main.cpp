@@ -6,6 +6,12 @@
 
 constexpr uint32_t WINDOW_WIDTH = 600, WINDOW_HEIGHT = 400;
 
+uint32_t ceil_to_next_multiple(const uint32_t value, const uint32_t step)
+{
+    const uint32_t divide_and_ceil = value / step + (value % step == 0 ? 0 : 1);
+    return step * divide_and_ceil;
+}
+
 int main()
 {
     if (!glfwInit())
@@ -26,6 +32,7 @@ int main()
     const auto device = adapter.create_device({}).value();
     const auto queue = device.get_queue();
 
+    const auto device_limits = device.get_limits().value().limits;
     const auto surface_capabilities = surface.get_capabilities(adapter);
 
     surface.configure(
@@ -72,12 +79,14 @@ int main()
     });
     queue.write_buffer(index_buffer, 0, index_data);
 
+    const uint32_t uniform_stride = ceil_to_next_multiple(sizeof(float), device_limits.min_uniform_buffer_offset_alignment);
+
     const auto uniform_buffer = device.create_buffer(
     {
         .label = "Uniform Buffer",
         .usage = wgpu::BufferUsageFlags::CopyDst | wgpu::BufferUsageFlags::Uniform,
         .mapped_at_creation = false,
-        .size = sizeof(float),
+        .size = uniform_stride * 5 + sizeof(float), // Enough space for SIX floats.
     });
 
     const auto bind_group_layout = device.create_bind_group_layout(
@@ -91,7 +100,7 @@ int main()
                 .buffer = wgpu::BufferBindingLayout
                 {
                     .type = wgpu::BufferBindingType::Uniform,
-                    .has_dynamic_offset = false,
+                    .has_dynamic_offset = true,
                     .min_binding_size = sizeof(float),
                 }
             }
@@ -244,7 +253,11 @@ int main()
         device.tick();
         glfwPollEvents();
 
-        queue.write_buffer(uniform_buffer, 0, static_cast<float>(glfwGetTime()));
+        for (auto i = 0; i < 6; ++i)
+        {
+            // Update the uniform buffer for each dynamic instance with an offset time.
+            queue.write_buffer(uniform_buffer, i * uniform_stride, static_cast<float>(glfwGetTime() + i));
+        }
 
         const auto command_encoder = device.create_command_encoder({.label = "Command Encoder"});
 
@@ -267,8 +280,12 @@ int main()
         render_pass.set_pipeline(render_pipeline);
         render_pass.set_vertex_buffer(0, point_buffer, 0, point_buffer.get_size());
         render_pass.set_index_buffer(index_buffer, wgpu::IndexFormat::Uint16, 0, index_buffer.get_size());
-        render_pass.set_bind_group(0, bind_group);
-        render_pass.draw_indexed(index_data.size(), 1, 0, 0, 0);
+
+        for (auto i = 0; i < 6; ++i)
+        {
+            render_pass.set_bind_group(0, bind_group, {i * uniform_stride});
+            render_pass.draw_indexed(index_data.size(), 1, 0, 0, 0);
+        }
 
         render_pass.end();
         const auto command_buffer = command_encoder.finish({.label = "Command Buffer"});
