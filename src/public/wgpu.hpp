@@ -478,9 +478,7 @@ namespace wgpu
 
     enum class SType : uint32_t
     {
-#ifdef WEBGPU_BACKEND_WGPU
-        Invalid = WGPUSType_Invalid,
-#endif
+        Invalid                                            = WGPUSType_Invalid,
         SurfaceDescriptorFromMetalLayer                    = WGPUSType_SurfaceDescriptorFromMetalLayer,
         SurfaceDescriptorFromWindowsHWND                   = WGPUSType_SurfaceDescriptorFromWindowsHWND,
         SurfaceDescriptorFromXlibWindow                    = WGPUSType_SurfaceDescriptorFromXlibWindow,
@@ -514,6 +512,9 @@ namespace wgpu
         RequestAdapterOptionsLUID                          = WGPUSType_RequestAdapterOptionsLUID,
         RequestAdapterOptionsGetGLProc                     = WGPUSType_RequestAdapterOptionsGetGLProc,
         RequestAdapterOptionsD3D11Device                   = WGPUSType_RequestAdapterOptionsD3D11Device,
+#ifdef WEBGPU_BACKEND_DAWN
+        DawnMultisampleStateRenderToSingleSampled          = WGPUSType_DawnMultisampleStateRenderToSingleSampled,
+#endif
         DawnRenderPassColorAttachmentRenderToSingleSampled = WGPUSType_DawnRenderPassColorAttachmentRenderToSingleSampled,
         RenderPassPixelLocalStorage                        = WGPUSType_RenderPassPixelLocalStorage,
         PipelineLayoutPixelLocalStorage                    = WGPUSType_PipelineLayoutPixelLocalStorage,
@@ -568,9 +569,6 @@ namespace wgpu
         Lost        = WGPUSurfaceGetCurrentTextureStatus_Lost,
         OutOfMemory = WGPUSurfaceGetCurrentTextureStatus_OutOfMemory,
         DeviceLost  = WGPUSurfaceGetCurrentTextureStatus_DeviceLost,
-#ifdef WEBGPU_BACKEND_DAWN
-        Error       = WGPUSurfaceGetCurrentTextureStatus_Error,
-#endif
     };
 
     enum class TextureAspect : uint32_t
@@ -710,7 +708,6 @@ namespace wgpu
         R8BG8Biplanar444Unorm       = WGPUTextureFormat_R8BG8Biplanar444Unorm,
         R10X6BG10X6Biplanar422Unorm = WGPUTextureFormat_R10X6BG10X6Biplanar422Unorm,
         R10X6BG10X6Biplanar444Unorm = WGPUTextureFormat_R10X6BG10X6Biplanar444Unorm,
-        External                    = WGPUTextureFormat_External,
 #endif
     };
 
